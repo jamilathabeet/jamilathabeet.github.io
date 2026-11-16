@@ -28,6 +28,7 @@ h1{font-size:1.6rem;margin:0 0 4px}
 @media (max-width:600px){.grid{grid-template-columns:1fr}}
 label{display:block;font-weight:600;margin-bottom:6px}
 input[type=text],input[type=date],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:46px;max-width:100%}
 input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
 textarea{min-height:64px;resize:vertical}
 .field{margin-bottom:14px}
@@ -106,11 +107,11 @@ td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
         </div>
       </div>
       <div class="field">
-        <label id="periodsLabel">حصصي التي تأخذها البديلة</label>
+        <label id="periodsLabel">الحصص التي تأخذها البديلة (من حصص المعلمة)</label>
         <div class="periods" id="periods"></div>
       </div>
       <div class="field" id="retField" hidden>
-        <label id="retLabel">حصص البديلة التي سآخذها مقابلها</label>
+        <label id="retLabel">الحصص التي تأخذها المعلمة (من حصص البديلة)</label>
         <div class="periods ret" id="retPeriods"></div>
       </div>
       <div class="field">
@@ -210,12 +211,14 @@ for (let i = 1; i <= 7; i++){
 const isSwap = () => $("modeSwap").checked;
 function updateMode(){
   $("retField").hidden = !isSwap();
+  const t = $("teacher").value.trim() || "المعلمة";
   const sub = $("substitute").value.trim() || "البديلة";
-  $("retLabel").textContent = "حصص " + sub + " التي سآخذها مقابلها";
-  $("periodsLabel").textContent = "حصصي التي تأخذها " + sub;
+  $("periodsLabel").textContent = "الحصص التي تأخذها " + sub + " (من حصص " + t + ")";
+  $("retLabel").textContent = "الحصص التي تأخذها " + t + " (من حصص " + sub + ")";
 }
 document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", updateMode));
 $("substitute").addEventListener("input", updateMode);
+$("teacher").addEventListener("input", updateMode);
 const checked = box => [...box.querySelectorAll("input:checked")].map(i => +i.value);
 const assignments = r => r.periods.map(p => ({p, coverer:r.substitute, owner:r.teacher}))
   .concat((r.returnPeriods || []).map(p => ({p, coverer:r.teacher, owner:r.substitute})));
@@ -253,6 +256,11 @@ async function load(){
       const s = document.createElement("span");
       s.className = "sub-name"; s.textContent = (swap ? "مع: " : "البديلة: ") + r.substitute;
       td.append(s);
+      const fmtP = l => l.map(p => AR[p-1]).join("، ");
+      const who = document.createElement("span");
+      who.className = "sub-name";
+      who.textContent = r.substitute + " تأخذ: " + fmtP(r.periods) + (swap ? " — " + r.teacher + " تأخذ: " + fmtP(r.returnPeriods) : "");
+      td.append(who);
       if (r.notes){
         const n = document.createElement("span");
         n.className = "notes"; n.style.display = "block"; n.textContent = r.notes;
@@ -300,7 +308,7 @@ $("form").addEventListener("submit", async ev => {
     if (res.ok){
       const fmt = l => l.map(p => AR[p-1]).join("، ");
       showMsg(entry.swap
-        ? "تم حفظ التبادل ✓ " + entry.substitute + " تأخذ الحصص: " + fmt(entry.periods) + " — وأنتِ تأخذين حصصها: " + fmt(entry.returnPeriods)
+        ? "تم حفظ التبادل ✓ " + entry.substitute + " تأخذ الحصص: " + fmt(entry.periods) + " — و" + entry.teacher + " تأخذ الحصص: " + fmt(entry.returnPeriods)
         : "تم حفظ التغطية ✓ الحصص: " + fmt(entry.periods), true);
       try{ localStorage.setItem("lesson-exchange-name", entry.teacher); }catch(e){}
       $("substitute").value = ""; $("notes").value = "";
