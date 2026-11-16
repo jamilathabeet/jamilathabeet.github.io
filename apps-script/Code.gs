@@ -96,12 +96,35 @@ function doGet(e) {
   return json_({ ok: true, rows: rows });
 }
 
-/** POST (نص JSON): {teacher, substitute, date, periods:[1..7], returnPeriods:[1..7], notes} */
+/** يرجع رقم الصف في الجدول لسجل بهذا المعرف، أو 0 إن لم يوجد */
+function findRow_(sh, id) {
+  if (!id || sh.getLastRow() < 2) return 0;
+  const ids = sh.getRange(2, 7, sh.getLastRow() - 1, 1).getValues();
+  for (let i = 0; i < ids.length; i++) if (String(ids[i][0]) === String(id)) return i + 2;
+  return 0;
+}
+
+/**
+ * POST (نص JSON):
+ *  إضافة: {teacher, substitute, date, periods:[1..7], returnPeriods:[1..7], swap, notes}
+ *  تعديل: نفس الحقول + {action:'update', id}
+ *  حذف:   {action:'delete', id}
+ */
 function doPost(e) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     const body = JSON.parse(e.postData.contents || '{}');
+    const action = body.action || 'add';
+    const sh = getSheet_();
+
+    if (action === 'delete') {
+      const row = findRow_(sh, body.id);
+      if (!row) return json_({ ok: false, error: 'لم يُعثر على هذا السجل، ربما حُذف مسبقًا.' });
+      sh.deleteRow(row);
+      return json_({ ok: true });
+    }
+
     const teacher = clean_(body.teacher, 80);
     const substitute = clean_(body.substitute, 80);
     const date = clean_(body.date, 10);
@@ -115,9 +138,16 @@ function doPost(e) {
     if (!periods.length) return json_({ ok: false, error: 'الرجاء اختيار حصة واحدة على الأقل.' });
     if (body.swap && !returnPeriods.length) return json_({ ok: false, error: 'في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.' });
 
-    // منع التعارض في نفس اليوم: معلمة تغطي حصتين في نفس الوقت، أو حصة تُعطى مرتين
+    let row = 0;
+    if (action === 'update') {
+      row = findRow_(sh, body.id);
+      if (!row) return json_({ ok: false, error: 'لم يُعثر على هذا السجل، ربما حُذف مسبقًا.' });
+    }
+
+    // منع التعارض في نفس اليوم (مع تجاهل السجل نفسه عند التعديل)
     const existing = [];
-    readRows_().filter(r => r.date === date).forEach(r => existing.push(...assignments_(r)));
+    readRows_().filter(r => r.date === date && r.id !== String(body.id || ''))
+      .forEach(r => existing.push(...assignments_(r)));
     const busy = [];
     assignments_({ teacher: teacher, substitute: substitute, periods: periods, returnPeriods: returnPeriods })
       .forEach(a => existing.forEach(x => {
@@ -127,10 +157,10 @@ function doPost(e) {
       }));
     if (busy.length) return json_({ ok: false, error: 'يوجد تعارض: ' + [...new Set(busy)].join('، ') });
 
-    const id = Utilities.getUuid();
+    const id = action === 'update' ? String(body.id) : Utilities.getUuid();
+    if (!row) row = sh.getLastRow() + 1;
     // نكتب الصف كنص صريح حتى لا يحوّل الجدول التاريخ أو الحصص تلقائيًا
-    const sh = getSheet_();
-    const range = sh.getRange(sh.getLastRow() + 1, 1, 1, HEADERS.length);
+    const range = sh.getRange(row, 1, 1, HEADERS.length);
     range.setNumberFormats([['yyyy-mm-dd hh:mm', '@', '@', '@', '@', '@', '@', '@']]);
     range.setValues([[new Date(), date, teacher, substitute, periods.join(','), notes, id, returnPeriods.join(',')]]);
     return json_({ ok: true, id: id });
