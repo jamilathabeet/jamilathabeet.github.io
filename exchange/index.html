@@ -59,15 +59,21 @@ button:disabled{opacity:.6;cursor:wait}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
 .toolbar .field{margin:0;flex:1;min-width:160px}
 .table-wrap{overflow-x:auto}
-table.sheet{width:100%;min-width:760px;border-collapse:collapse}
+table.sheet{width:100%;min-width:680px;border-collapse:collapse}
 .sheet th,.sheet td{padding:8px 6px;border:1px solid var(--line);text-align:center;vertical-align:middle;word-wrap:break-word}
 .sheet th{font-size:.85rem;font-weight:700;background:var(--brand-soft)}
 .sheet td.name{font-weight:600}
-.sheet td.sign{min-width:110px;height:52px}
+.sheet td.sign{min-width:90px;height:52px}
 .sheet td.num{width:36px;color:var(--muted)}
 .sheet .tag{margin:4px 0 0;display:inline-block}
 .sheet td.notes{font-size:.85rem;color:var(--muted)}
 .print-only{display:none}
+.sheet td.type{font-weight:600;white-space:nowrap}
+.sheet td.actions{white-space:nowrap}
+.sheet td.actions button{padding:6px 10px;font-size:.85rem;margin:2px}
+button.danger{background:transparent;color:var(--err);border:1.5px solid var(--err);font-weight:600}
+.form-actions{display:flex;gap:10px;flex-wrap:wrap}
+.editing-note{background:var(--swap-soft);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-weight:600}
 .dot{display:inline-block;min-width:26px;padding:2px 6px;border-radius:8px;background:var(--brand-soft);color:var(--ink);font-weight:700;font-size:.85rem}
 .empty{color:var(--muted);text-align:center;padding:20px 0}
 .notes{color:var(--muted);font-size:.85rem;text-align:right}
@@ -95,8 +101,9 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <div class="banner" id="demoBanner">⚠️ وضع التجربة: لم يُربط الرابط بجدول Google بعد، لذلك تُحفظ البيانات على هذا الجهاز فقط.</div>
 
   <section class="card no-print">
-    <h2>تسجيل تبادل جديد</h2>
+    <h2 id="formTitle">تسجيل تبادل جديد</h2>
     <form id="form" novalidate>
+      <div class="editing-note" id="editingNote" hidden>✏️ تعديل تبادل محفوظ — غيّري ما تريدين ثم اضغطي «حفظ التعديل».</div>
       <div class="grid">
         <div class="field">
           <label for="teacher">اسم المعلمة</label>
@@ -130,7 +137,10 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
         <label for="notes">ملاحظات (اختياري)</label>
         <textarea id="notes" name="notes" maxlength="300" placeholder="مثال: الصف الثالث / الفصل ب"></textarea>
       </div>
-      <button type="submit" id="submitBtn">حفظ التبادل</button>
+      <div class="form-actions">
+        <button type="submit" id="submitBtn">حفظ التبادل</button>
+        <button type="button" class="ghost" id="cancelEdit" hidden>إلغاء التعديل</button>
+      </div>
       <div class="msg" id="msg" role="status"></div>
     </form>
   </section>
@@ -151,15 +161,16 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
           <tr>
             <th>م</th>
             <th>المعلمة</th>
-            <th>الحصص التي تأخذها البديلة</th>
-            <th>توقيع المعلمة</th>
             <th>المعلمة البديلة</th>
+            <th>نوع الطلب</th>
+            <th>الحصص التي تأخذها البديلة</th>
             <th>الحصص التي تأخذها المعلمة<br><small>(في التبادل)</small></th>
-            <th>توقيع البديلة</th>
+            <th>التوقيع</th>
             <th>ملاحظات</th>
+            <th class="no-print">إجراءات</th>
           </tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="8" class="empty">جارٍ التحميل…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="9" class="empty">جارٍ التحميل…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -195,10 +206,27 @@ async function apiList(date){
   if (!data.ok) throw new Error(data.error || "تعذّر التحميل");
   return data.rows;
 }
-async function apiAdd(entry){
+async function apiPost(payload){
+  const res = await fetch(API_URL, {
+    method:"POST",
+    headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+async function apiDelete(id){
+  if (DEMO){
+    const rows = demoRows(), n = rows.length;
+    demoSave(rows.filter(r => r.id !== id));
+    return n === demoRows().length ? {ok:false, error:"لم يُعثر على هذا السجل."} : {ok:true};
+  }
+  return apiPost({action:"delete", id});
+}
+async function apiSave(entry){
   if (DEMO){
     const rows = demoRows();
-    const existing = rows.filter(r => r.date === entry.date).flatMap(assignments);
+    if (entry.id && !rows.some(r => r.id === entry.id)) return {ok:false, error:"لم يُعثر على هذا السجل."};
+    const existing = rows.filter(r => r.date === entry.date && r.id !== entry.id).flatMap(assignments);
     const busy = [];
     assignments(entry).forEach(a => existing.forEach(x => {
       if (x.p !== a.p) return;
@@ -206,16 +234,13 @@ async function apiAdd(entry){
       if (x.owner === a.owner) busy.push("الحصة " + a.p + " للمعلمة " + a.owner + " مسجّلة مسبقًا");
     }));
     if (busy.length) return {ok:false, error:"يوجد تعارض: " + [...new Set(busy)].join("، ")};
-    rows.push({...entry, id: String(Date.now()), createdAt: new Date().toISOString()});
+    const rec = {...entry, id: entry.id || String(Date.now()), createdAt: new Date().toISOString()};
+    delete rec.action;
+    if (entry.id) rows[rows.findIndex(r => r.id === entry.id)] = rec; else rows.push(rec);
     demoSave(rows);
     return {ok:true};
   }
-  const res = await fetch(API_URL, {
-    method:"POST",
-    headers:{"Content-Type":"text/plain;charset=utf-8"},
-    body: JSON.stringify(entry)
-  });
-  return res.json();
+  return apiPost(entry);
 }
 
 /* ---------- UI ---------- */
@@ -261,9 +286,10 @@ async function load(){
     const rows = await apiList(date);
     tbody.innerHTML = "";
     if (!rows.length){
-      tbody.innerHTML = '<tr><td colspan="8" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
       return;
     }
+    currentRows = rows;
     const fmtP = l => (l && l.length) ? l.map(p => AR[p-1]).join("، ") : "—";
     rows.forEach((r, idx) => {
       const tr = document.createElement("tr");
@@ -276,20 +302,75 @@ async function load(){
       };
       const swap = (r.returnPeriods || []).length > 0;
       cell(AR_NUM(idx + 1), "num");
-      const t = cell(r.teacher, "name");
-      if (swap){ const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "تبادل ⇄"; t.append(document.createElement("br"), tag); }
-      cell(fmtP(r.periods));
-      cell("", "sign");
+      cell(r.teacher, "name");
       cell(r.substitute, "name");
+      cell(swap ? "تبادل ⇄" : "تغطية", "type");
+      cell(fmtP(r.periods));
       cell(fmtP(r.returnPeriods));
       cell("", "sign");
       cell(r.notes || "", "notes");
+      const act = cell("", "actions no-print");
+      const eb = document.createElement("button");
+      eb.type = "button"; eb.className = "ghost"; eb.textContent = "تعديل";
+      eb.addEventListener("click", () => startEdit(r));
+      const db = document.createElement("button");
+      db.type = "button"; db.className = "danger"; db.textContent = "حذف";
+      db.addEventListener("click", () => removeRow(r, db));
+      act.append(eb, db);
       tbody.append(tr);
     });
   }catch(e){
-    tbody.innerHTML = '<tr><td colspan="8" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
   }
 }
+
+/* ---------- Edit / delete ---------- */
+let currentRows = [], editingId = null;
+
+function resetForm(){
+  editingId = null;
+  $("substitute").value = ""; $("notes").value = "";
+  document.querySelectorAll(".periods input").forEach(i => i.checked = false);
+  $("modeCover").checked = true;
+  $("editingNote").hidden = true; $("cancelEdit").hidden = true;
+  $("formTitle").textContent = "تسجيل تبادل جديد";
+  $("submitBtn").textContent = "حفظ التبادل";
+  updateMode();
+}
+
+function startEdit(r){
+  editingId = r.id;
+  $("teacher").value = r.teacher;
+  $("substitute").value = r.substitute;
+  $("date").value = r.date;
+  $("notes").value = r.notes || "";
+  const swap = (r.returnPeriods || []).length > 0;
+  (swap ? $("modeSwap") : $("modeCover")).checked = true;
+  periodsBox.querySelectorAll("input").forEach(i => i.checked = r.periods.includes(+i.value));
+  retBox.querySelectorAll("input").forEach(i => i.checked = (r.returnPeriods || []).includes(+i.value));
+  $("editingNote").hidden = false; $("cancelEdit").hidden = false;
+  $("formTitle").textContent = "تعديل تبادل";
+  $("submitBtn").textContent = "حفظ التعديل";
+  $("msg").className = "msg";
+  updateMode();
+  $("formTitle").scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+async function removeRow(r, btn){
+  const what = r.teacher + " ← " + r.substitute;
+  if (!confirm("حذف تبادل «" + what + "» نهائيًا؟")) return;
+  btn.disabled = true; btn.textContent = "جارٍ الحذف…";
+  try{
+    const res = await apiDelete(r.id);
+    if (!res.ok){ alert(res.error || "تعذّر الحذف."); }
+    if (editingId === r.id) resetForm();
+  }catch(e){
+    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+  }
+  load();
+}
+
+$("cancelEdit").addEventListener("click", () => { resetForm(); $("msg").className = "msg"; });
 
 $("form").addEventListener("submit", async ev => {
   ev.preventDefault();
@@ -302,24 +383,26 @@ $("form").addEventListener("submit", async ev => {
     swap: isSwap(),
     notes: $("notes").value.trim()
   };
+  if (editingId){ entry.action = "update"; entry.id = editingId; }
   if (!entry.teacher || !entry.substitute) return showMsg("الرجاء كتابة اسم المعلمة واسم المعلمة البديلة.", false);
   if (entry.teacher === entry.substitute) return showMsg("لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.", false);
   if (!entry.date) return showMsg("الرجاء اختيار التاريخ.", false);
   if (!entry.periods.length) return showMsg("الرجاء اختيار حصة واحدة على الأقل.", false);
   if (entry.swap && !entry.returnPeriods.length) return showMsg("في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
 
-  const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "جارٍ الحفظ…";
+  const btn = $("submitBtn"); const label = btn.textContent;
+  btn.disabled = true; btn.textContent = "جارٍ الحفظ…";
+  let saved = false;
   try{
-    const res = await apiAdd(entry);
+    const res = await apiSave(entry);
     if (res.ok){
+      saved = true;
       const fmt = l => l.map(p => AR[p-1]).join("، ");
-      showMsg(entry.swap
+      showMsg(entry.action === "update" ? "تم حفظ التعديل ✓" : (entry.swap
         ? "تم حفظ التبادل ✓ " + entry.substitute + " تأخذ الحصص: " + fmt(entry.periods) + " — و" + entry.teacher + " تأخذ الحصص: " + fmt(entry.returnPeriods)
-        : "تم حفظ التغطية ✓ الحصص: " + fmt(entry.periods), true);
+        : "تم حفظ التغطية ✓ الحصص: " + fmt(entry.periods)), true);
       try{ localStorage.setItem("lesson-exchange-name", entry.teacher); }catch(e){}
-      $("substitute").value = ""; $("notes").value = "";
-      document.querySelectorAll(".periods input").forEach(i => i.checked = false);
-      $("modeCover").checked = true; updateMode();
+      resetForm();
       $("viewDate").value = entry.date;
       load();
     } else {
@@ -328,7 +411,8 @@ $("form").addEventListener("submit", async ev => {
   }catch(e){
     showMsg("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
   }finally{
-    btn.disabled = false; btn.textContent = "حفظ التبادل";
+    btn.disabled = false;
+    if (!saved) btn.textContent = label;
   }
 });
 
