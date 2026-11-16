@@ -1,5 +1,5 @@
 /**
- * خادم صفحة تبادل الحصص — يُلصق في Google Apps Script المرتبط بجدول Google Sheets.
+ * خادم صفحة تبادل الحصص — يُلصق في مشروع Google Apps Script (مستقل أو مرتبط بجدول).
  * الأعمدة: الطابع الزمني | التاريخ | المعلمة | المعلمة البديلة | الحصص | ملاحظات | المعرف | حصص البديلة (للتبادل)
  *  - «الحصص»: حصص المعلمة التي تأخذها البديلة.
  *  - «حصص البديلة»: حصص البديلة التي تأخذها المعلمة مقابلها (فارغة = تغطية فقط).
@@ -8,11 +8,33 @@ const SHEET_NAME = 'التبادل';
 const HEADERS = ['الطابع الزمني', 'التاريخ', 'المعلمة', 'المعلمة البديلة', 'الحصص', 'ملاحظات', 'المعرف', 'حصص البديلة (للتبادل)'];
 const TZ = 'Asia/Riyadh';
 
+/**
+ * شغّليها مرة واحدة من المحرر (زر «تنفيذ») لمنح الأذونات وإنشاء الجدول.
+ * رابط الجدول يظهر في «سجل التنفيذ».
+ */
+function setup() {
+  const ss = getSpreadsheet_();
+  getSheet_();
+  Logger.log('تم التجهيز ✓ رابط جدول البيانات: ' + ss.getUrl());
+}
+
+/** يعمل سواء كان المشروع مرتبطًا بجدول أو مستقلًا (ينشئ جدولًا باسم «تبادل الحصص» أول مرة). */
+function getSpreadsheet_() {
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active) return active;
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('SHEET_ID');
+  if (id) return SpreadsheetApp.openById(id);
+  const ss = SpreadsheetApp.create('تبادل الحصص');
+  ss.getSheets()[0].setName(SHEET_NAME);
+  props.setProperty('SHEET_ID', ss.getId());
+  return ss;
+}
+
 function getSheet_() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  let sh = ss.getSheetByName(SHEET_NAME);
-  if (!sh) {
-    sh = ss.insertSheet(SHEET_NAME);
+  const ss = getSpreadsheet_();
+  const sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);
+  if (sh.getLastRow() === 0) {
     sh.appendRow(HEADERS);
     sh.setFrozenRows(1);
     sh.setRightToLeft(true);
