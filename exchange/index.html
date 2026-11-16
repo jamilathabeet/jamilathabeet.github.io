@@ -260,7 +260,9 @@ async function api(payload){
     headers:{"Content-Type":"text/plain;charset=utf-8"},
     body: JSON.stringify(payload)
   });
-  return res.json();
+  const text = await res.text();
+  try{ return JSON.parse(text); }
+  catch(e){ throw new Error("رد غير متوقع من Google: " + text.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim().slice(0, 160)); }
 }
 
 /* ---------- النموذج ---------- */
@@ -535,7 +537,10 @@ async function loadList(){
     });
     $("listCard").classList.toggle("no-acts", !anyActs);
   }catch(e){
-    tbody.innerHTML = '<tr><td colspan="12" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
+    const td = document.createElement("td");
+    td.colSpan = 12; td.className = "empty";
+    td.textContent = "تعذّر تحميل البيانات، حاولي التحديث." + (e && e.message ? " (" + e.message + ")" : "");
+    tbody.innerHTML = ""; const tr = document.createElement("tr"); tr.append(td); tbody.append(tr);
   }
 }
 ["viewDate","fromDate","toDate"].forEach(id => $(id).addEventListener("change", loadList));
