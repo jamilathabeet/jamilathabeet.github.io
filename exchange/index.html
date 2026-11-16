@@ -18,6 +18,7 @@
   }
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.6}
 .wrap{max-width:820px;margin:0 auto;padding:24px 16px 48px}
 h1{font-size:1.6rem;margin:0 0 4px}
@@ -71,8 +72,12 @@ button:disabled{opacity:.6;cursor:wait}
 .tag{display:inline-block;font-size:.75rem;font-weight:600;padding:0 8px;border-radius:8px;background:var(--swap-soft);margin-inline-start:6px}
 
 /* الإدارة */
-.admin-entry{text-align:center;margin-top:8px}
-.admin-entry button{font-size:.85rem}
+.no-acts .act-col{display:none}
+.date-col{display:none;white-space:nowrap}
+.multi-days .date-col{display:table-cell}
+.view-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.view-tabs button{padding:6px 14px}
+button.on{background:var(--brand);color:var(--brand-ink)}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
 .toolbar .field{margin:0;flex:1;min-width:160px}
 .login{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
@@ -172,58 +177,53 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
     <div class="mine" id="mineList"></div>
   </section>
 
-  <!-- الإدارة -->
-  <section class="card" id="adminCard" hidden>
-    <div class="no-print" id="loginBox">
-      <h2>دخول الإدارة 🔒</h2>
-      <form class="login" id="loginForm">
-        <div class="field">
-          <label for="pin">الرمز السري</label>
-          <input type="password" id="pin" autocomplete="current-password" required>
-        </div>
-        <button type="submit" id="loginBtn">دخول</button>
-        <button type="button" class="ghost" id="closeAdmin">إغلاق</button>
-      </form>
-      <div class="msg" id="loginMsg" role="status"></div>
+  <!-- جدول التبادل -->
+  <section class="card" id="listCard">
+    <h2 id="listTitle">جدول التبادل</h2>
+    <div class="view-tabs no-print" role="group" aria-label="طريقة العرض">
+      <button type="button" class="ghost" data-view="day">يوم</button>
+      <button type="button" class="ghost" data-view="range">فترة</button>
+      <button type="button" class="ghost" data-view="all">كل الأيام</button>
     </div>
-
-    <div id="adminBox" hidden>
-      <h2 id="listTitle">سجل التبادل</h2>
-      <div class="toolbar no-print">
-        <div class="field">
-          <label for="viewDate">عرض يوم</label>
-          <input type="date" id="viewDate">
-        </div>
-        <button type="button" class="ghost" id="refreshBtn">تحديث</button>
-        <button type="button" class="ghost" onclick="window.print()">طباعة</button>
-        <button type="button" class="ghost" id="logoutBtn">خروج</button>
+    <div class="toolbar no-print">
+      <div class="field" id="dayField">
+        <label for="viewDate">اليوم</label>
+        <input type="date" id="viewDate">
       </div>
-      <div class="table-wrap">
-        <table class="sheet">
-          <thead>
-            <tr>
-              <th>م</th>
-              <th>المعلمة</th>
-              <th>الحصة</th>
-              <th>الصف</th>
-              <th>المعلمة البديلة</th>
-              <th>الحصة</th>
-              <th>الصف</th>
-              <th>نوع الطلب</th>
-              <th>التوقيع</th>
-              <th>ملاحظات</th>
-              <th class="no-print">إجراءات</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
+      <div class="field" id="fromField" hidden>
+        <label for="fromDate">من</label>
+        <input type="date" id="fromDate">
       </div>
+      <div class="field" id="toField" hidden>
+        <label for="toDate">إلى</label>
+        <input type="date" id="toDate">
+      </div>
+      <button type="button" class="ghost" id="refreshBtn">تحديث</button>
+      <button type="button" class="ghost" onclick="window.print()">طباعة</button>
+      <button type="button" class="ghost" id="csvBtn">تحميل Excel</button>
+    </div>
+    <div class="table-wrap">
+      <table class="sheet">
+        <thead>
+          <tr>
+            <th>م</th>
+            <th class="date-col">التاريخ</th>
+            <th>المعلمة</th>
+            <th>الحصة</th>
+            <th>الصف</th>
+            <th>المعلمة البديلة</th>
+            <th>الحصة</th>
+            <th>الصف</th>
+            <th>نوع الطلب</th>
+            <th>التوقيع</th>
+            <th>ملاحظات</th>
+            <th class="no-print act-col" id="actHead">إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"><tr><td colspan="12" class="empty">جارٍ التحميل…</td></tr></tbody>
+      </table>
     </div>
   </section>
-
-  <div class="admin-entry no-print" id="adminEntry">
-    <button type="button" class="ghost" id="openAdmin">🔒 دخول الإدارة</button>
-  </div>
 </main>
 
 <script>
@@ -252,8 +252,6 @@ const store = {
 };
 const MINE_KEY = "lesson-exchange-mine";       // [{id, token}]
 const NAME_KEY = "lesson-exchange-name";
-let adminPin = (() => { try{ return sessionStorage.getItem("lesson-exchange-pin") || ""; }catch(e){ return ""; } })();
-function setPin(p){ adminPin = p; try{ p ? sessionStorage.setItem("lesson-exchange-pin", p) : sessionStorage.removeItem("lesson-exchange-pin"); }catch(e){} }
 
 /* ---------- الاتصال بالخادم ---------- */
 async function api(payload){
@@ -295,7 +293,7 @@ updateMode();
 function showMsg(el, text, ok){ el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
 function clearMsg(el){ el.className = "msg"; el.textContent = ""; }
 
-let editing = null; // {id, by:"mine"|"admin"}
+let editing = null; // {id}
 
 function resetForm(){
   editing = null;
@@ -309,8 +307,8 @@ function resetForm(){
   updateMode();
 }
 
-function startEdit(r, by){
-  editing = {id: r.id, by};
+function startEdit(r){
+  editing = {id: r.id};
   $("teacher").value = r.teacher;
   $("substitute").value = r.substitute;
   $("date").value = r.date;
@@ -329,13 +327,10 @@ function startEdit(r, by){
 }
 $("cancelEdit").addEventListener("click", () => { resetForm(); clearMsg($("msg")); });
 
-/** يضيف بيانات الصلاحية: رمز الطلب للمعلمة، أو الرمز السري للإدارة */
-function withAuth(payload, id, by){
-  if (by === "admin") payload.pin = adminPin;
-  else {
-    const it = store.get(MINE_KEY, []).find(x => x.id === id);
-    if (it) payload.token = it.token;
-  }
+/** يضيف رمز الطلب المحفوظ في جهاز المعلمة */
+function withToken(payload, id){
+  const it = store.get(MINE_KEY, []).find(x => x.id === id);
+  if (it) payload.token = it.token;
   return payload;
 }
 
@@ -363,7 +358,7 @@ $("form").addEventListener("submit", async ev => {
 
   const wasEditing = editing;
   const payload = wasEditing
-    ? withAuth({...entry, action:"update", id: wasEditing.id}, wasEditing.id, wasEditing.by)
+    ? withToken({...entry, action:"update", id: wasEditing.id}, wasEditing.id)
     : {...entry, action:"add"};
 
   const btn = $("submitBtn"), label = btn.textContent;
@@ -382,7 +377,8 @@ $("form").addEventListener("submit", async ev => {
       showMsg(msg, wasEditing ? "تم حفظ التعديل بنجاح ✓" : "تم الحفظ بنجاح ✓", true);
       resetForm();
       loadMine();
-      if (adminPin && !$("adminBox").hidden){ $("viewDate").value = entry.date; loadAdmin(); }
+      $("viewDate").value = entry.date; view = "day";
+      loadList();
     } else {
       showMsg(msg, res.error || "تعذّر الحفظ.", false);
     }
@@ -394,19 +390,18 @@ $("form").addEventListener("submit", async ev => {
   }
 });
 
-async function removeReq(r, by, btn){
-  const word = by === "admin" ? "حذف" : "إلغاء";
-  if (!confirm(word + " طلب «" + r.teacher + " ← " + r.substitute + "» يوم " + fmtDate(r.date) + "؟")) return;
+async function removeReq(r, btn){
+  if (!confirm("إلغاء طلب «" + r.teacher + " ← " + r.substitute + "» يوم " + fmtDate(r.date) + "؟")) return;
   btn.disabled = true; btn.textContent = "جارٍ…";
   try{
-    const res = await api(withAuth({action:"delete", id: r.id}, r.id, by));
+    const res = await api(withToken({action:"delete", id: r.id}, r.id));
     if (!res.ok) alert(res.error || "تعذّر الحذف.");
     if (editing && editing.id === r.id) resetForm();
   }catch(e){
     alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
   }
   loadMine();
-  if (by === "admin") loadAdmin();
+  loadList();
 }
 
 /* ---------- طلباتي ---------- */
@@ -436,9 +431,9 @@ async function loadMine(){
       if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
       const btns = document.createElement("div"); btns.className = "btns";
       const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
-      eb.addEventListener("click", () => startEdit(r, "mine"));
+      eb.addEventListener("click", () => startEdit(r));
       const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "إلغاء الطلب";
-      db.addEventListener("click", () => removeReq(r, "mine", db));
+      db.addEventListener("click", () => removeReq(r, db));
       btns.append(eb, db);
       box.append(info, btns);
       list.append(box);
@@ -446,53 +441,76 @@ async function loadMine(){
   }catch(e){ /* بدون إنترنت: نترك القائمة كما هي */ }
 }
 
-/* ---------- الإدارة ---------- */
-function showAdmin(open){
-  $("adminCard").hidden = !open;
-  $("adminEntry").hidden = open;
-  $("loginBox").hidden = !!adminPin;
-  $("adminBox").hidden = !adminPin;
-  if (open && adminPin) loadAdmin();
-  if (open && !adminPin) setTimeout(() => $("pin").focus(), 50);
-}
-$("openAdmin").addEventListener("click", () => { showAdmin(true); $("adminCard").scrollIntoView({behavior:"smooth"}); });
-$("closeAdmin").addEventListener("click", () => showAdmin(false));
-$("logoutBtn").addEventListener("click", () => { setPin(""); if (editing && editing.by === "admin") resetForm(); showAdmin(false); });
+/* ---------- جدول التبادل ---------- */
+const mineIds = () => new Set(store.get(MINE_KEY, []).map(x => x.id));
 
-$("loginForm").addEventListener("submit", async ev => {
-  ev.preventDefault();
-  const pin = $("pin").value;
-  if (!pin) return;
-  const btn = $("loginBtn"); btn.disabled = true;
+let view = "day", shownRows = [];
+document.querySelectorAll(".view-tabs button").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; loadList(); }));
+// الفترة الافتراضية: من أول الأسبوع (الأحد) إلى اليوم
+(() => {
+  const t = new Date(today() + "T12:00:00");
+  const sun = new Date(t); sun.setDate(t.getDate() - t.getDay());
+  $("fromDate").value = sun.toISOString().slice(0,10);
+  $("toDate").value = today();
+})();
+const fmtShort = d => d.split("-").reverse().join("/");
+
+/* تحميل السجل كملف يفتح في Excel (CSV مع BOM حتى تظهر العربية صحيحة) */
+$("csvBtn").addEventListener("click", async () => {
+  const btn = $("csvBtn"); btn.disabled = true;
   try{
-    const res = await api({action:"login", pin});
-    if (res.ok){ setPin(pin); $("pin").value = ""; clearMsg($("loginMsg")); showAdmin(true); }
-    else showMsg($("loginMsg"), res.error || "تعذّر الدخول.", false);
+    const res = {rows: shownRows};
+    if (!res.rows.length){ alert("لا توجد بيانات في العرض الحالي."); return; }
+    const head = ["التاريخ","المعلمة","الحصة","الصف","المعلمة البديلة","الحصة","الصف","نوع الطلب","ملاحظات"];
+    const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const lines = [head.map(q).join(",")].concat(res.rows.map(r => [
+      r.date, r.teacher, fmtP(r.returnPeriods), isSwapRow(r) ? (r.retCls || "") : "—",
+      r.substitute, fmtP(r.periods), r.cls || "", isSwapRow(r) ? "تبادل" : "تغطية", r.notes || ""
+    ].map(q).join(",")));
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "lesson-exchange-" + (view === "day" ? $("viewDate").value : view === "range" ? $("fromDate").value + "_" + $("toDate").value : "all") + ".csv";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }catch(e){
-    showMsg($("loginMsg"), "تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
+    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
   }finally{ btn.disabled = false; }
 });
 
-async function loadAdmin(){
+async function loadList(){
   const date = $("viewDate").value || today();
-  $("listTitle").textContent = "سجل التبادل — " + fmtDate(date);
+  let from = $("fromDate").value, to = $("toDate").value;
+  if (from && to && from > to){ [from, to] = [to, from]; $("fromDate").value = from; $("toDate").value = to; }
+  document.querySelectorAll(".view-tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === view));
+  $("dayField").hidden = view !== "day";
+  $("fromField").hidden = $("toField").hidden = view !== "range";
+  $("listCard").classList.toggle("multi-days", view !== "day");
+  $("listTitle").textContent =
+    view === "day" ? "جدول التبادل — " + fmtDate(date) :
+    view === "range" ? "سجل التبادل — من " + fmtShort(from) + " إلى " + fmtShort(to) :
+    "سجل التبادل — كل الأيام";
   const tbody = $("tbody");
-  tbody.innerHTML = '<tr><td colspan="11" class="empty">جارٍ التحميل…</td></tr>';
+  shownRows = [];
   try{
-    const res = await api({action:"list", pin: adminPin, date});
-    if (!res.ok){
-      if (res.auth){ setPin(""); showAdmin(true); showMsg($("loginMsg"), res.error, false); return; }
-      throw new Error(res.error);
+    const res = await api(view === "day" ? {action:"list", date} : {action:"list"});
+    if (!res.ok) throw new Error(res.error);
+    if (view === "range"){
+      res.rows = res.rows.filter(r => (!from || r.date >= from) && (!to || r.date <= to))
+        .sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
     }
+    shownRows = res.rows;
     tbody.innerHTML = "";
+    const mine = mineIds();
+    let anyActs = false;
     if (!res.rows.length){
-      tbody.innerHTML = '<tr><td colspan="11" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
-      return;
+      tbody.innerHTML = '<tr><td colspan="12" class="empty">' + (view === "day" ? "لا يوجد تبادل مسجّل لهذا اليوم." : view === "range" ? "لا يوجد تبادل مسجّل في هذه الفترة." : "لا يوجد أي تبادل مسجّل.") + '</td></tr>';
     }
     res.rows.forEach((r, idx) => {
       const tr = document.createElement("tr");
       const cell = (text, cls) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
       cell(AR_NUM(idx + 1), "num");
+      cell(fmtShort(r.date), "date-col");
       cell(r.teacher, "name");
       cell(fmtP(r.returnPeriods), "per");
       cell(isSwapRow(r) ? (r.retCls || "") : "—", "cls");
@@ -502,22 +520,28 @@ async function loadAdmin(){
       cell(isSwapRow(r) ? "تبادل ⇄" : "تغطية", "type");
       cell("", "sign");
       cell(r.notes || "", "notes");
-      const act = cell("", "actions no-print");
-      const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
-      eb.addEventListener("click", () => startEdit(r, "admin"));
-      const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "حذف";
-      db.addEventListener("click", () => removeReq(r, "admin", db));
-      act.append(eb, db);
+      const act = cell("", "actions no-print act-col");
+      const isMine = mine.has(r.id);
+      if (isMine){
+        anyActs = true;
+        const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
+        eb.addEventListener("click", () => startEdit(r));
+        const db = document.createElement("button"); db.type = "button"; db.className = "danger small";
+        db.textContent = "إلغاء";
+        db.addEventListener("click", () => removeReq(r, db));
+        act.append(eb, db);
+      }
       tbody.append(tr);
     });
+    $("listCard").classList.toggle("no-acts", !anyActs);
   }catch(e){
-    tbody.innerHTML = '<tr><td colspan="11" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
   }
 }
-$("viewDate").addEventListener("change", loadAdmin);
-$("refreshBtn").addEventListener("click", loadAdmin);
+["viewDate","fromDate","toDate"].forEach(id => $(id).addEventListener("change", loadList));
+$("refreshBtn").addEventListener("click", loadList);
 
-if (adminPin) showAdmin(true);
+loadList();
 loadMine();
 </script>
 </body>
