@@ -8,13 +8,13 @@
 :root{
   --bg:#f2f6f3; --card:#ffffff; --ink:#12302b; --muted:#5b726d; --line:#d7e3dc;
   --brand:#2a8a3f; --brand-ink:#ffffff; --brand-soft:#e3f2e6; --err:#b3261e; --err-soft:#fdecea;
-  --warn:#8a5a00; --warn-soft:#fff4dc; --swap:#2f6db5; --swap-soft:#e1ecf8;
+  --swap:#2f6db5; --swap-soft:#e1ecf8;
 }
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#0f1a17; --card:#16241f; --ink:#e4efe9; --muted:#9db3ab; --line:#2a3d36;
     --brand:#4fb565; --brand-ink:#0b1712; --brand-soft:#1d3a26; --err:#ff8a80; --err-soft:#3a1d1b;
-    --warn:#ffcc66; --warn-soft:#3a2f14; --swap:#7fb0ec; --swap-soft:#1b2c42;
+    --swap:#7fb0ec; --swap-soft:#1b2c42;
   }
 }
 *{box-sizing:border-box}
@@ -27,7 +27,7 @@ h1{font-size:1.6rem;margin:0 0 4px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:600px){.grid{grid-template-columns:1fr}}
 label{display:block;font-weight:600;margin-bottom:6px}
-input[type=text],input[type=date],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+input[type=text],input[type=password],input[type=date],textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
 input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-height:46px;max-width:100%}
 input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
 textarea{min-height:64px;resize:vertical}
@@ -36,53 +36,62 @@ textarea{min-height:64px;resize:vertical}
 @media (max-width:480px){.periods{grid-template-columns:repeat(4,1fr)}}
 .periods input{position:absolute;opacity:0;pointer-events:none}
 .periods label{margin:0;text-align:center;padding:10px 0;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-weight:600;user-select:none;background:var(--bg)}
+.periods label small{display:block;font-weight:400;font-size:.75rem;opacity:.8}
 .periods input:checked + label{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
 .periods.ret input:checked + label{background:var(--swap);border-color:var(--swap);color:var(--brand-ink)}
+.periods input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
 .mode{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .mode input{position:absolute;opacity:0;pointer-events:none}
 .mode label{margin:0;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;background:var(--bg)}
 .mode label small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
 .mode input:checked + label{border-color:var(--brand);background:var(--brand-soft)}
 .mode input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
-.dot.ret{background:var(--swap-soft)}
-.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:.85rem;margin-top:10px}
-.tag{display:inline-block;font-size:.75rem;font-weight:600;padding:0 8px;border-radius:8px;background:var(--swap-soft);margin-inline-start:6px}
-.periods input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
-.periods small{display:block;font-weight:400;font-size:.75rem;opacity:.8}
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
 button.ghost{background:transparent;color:var(--brand);border:1.5px solid var(--brand);padding:8px 14px;font-weight:600}
+button.danger{background:transparent;color:var(--err);border:1.5px solid var(--err);padding:8px 14px;font-weight:600}
+button.small{padding:6px 10px;font-size:.85rem}
 button:disabled{opacity:.6;cursor:wait}
+.form-actions{display:flex;gap:10px;flex-wrap:wrap}
 .msg{border-radius:10px;padding:10px 14px;margin-top:14px;display:none}
 .msg.ok{display:block;background:var(--brand-soft)}
 .msg.err{display:block;background:var(--err-soft);color:var(--err)}
-.banner{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:10px 14px;margin-bottom:20px;display:none}
+.editing-note{background:var(--swap-soft);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-weight:600}
+.hint{color:var(--muted);font-size:.85rem;margin:0 0 12px}
+.empty{color:var(--muted);text-align:center;padding:16px 0}
+
+/* طلباتي */
+.mine{display:grid;gap:10px}
+.req{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.req .info{flex:1;min-width:200px}
+.req .when{font-weight:700}
+.req .line{color:var(--muted);font-size:.9rem}
+.req .btns{display:flex;gap:6px}
+.tag{display:inline-block;font-size:.75rem;font-weight:600;padding:0 8px;border-radius:8px;background:var(--swap-soft);margin-inline-start:6px}
+
+/* الإدارة */
+.admin-entry{text-align:center;margin-top:8px}
+.admin-entry button{font-size:.85rem}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
 .toolbar .field{margin:0;flex:1;min-width:160px}
+.login{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
+.login .field{margin:0;flex:1;min-width:180px}
 .table-wrap{overflow-x:auto}
 table.sheet{width:100%;min-width:680px;border-collapse:collapse}
 .sheet th,.sheet td{padding:8px 6px;border:1px solid var(--line);text-align:center;vertical-align:middle;word-wrap:break-word}
 .sheet th{font-size:.85rem;font-weight:700;background:var(--brand-soft)}
-.sheet td.name{font-weight:600}
-.sheet td.sign{min-width:90px;height:52px}
 .sheet td.num{width:36px;color:var(--muted)}
-.sheet .tag{margin:4px 0 0;display:inline-block}
-.sheet td.notes{font-size:.85rem;color:var(--muted)}
-.print-only{display:none}
-.sheet td.type{font-weight:600;white-space:nowrap}
+.sheet td.name{font-weight:600}
 .sheet td.per{font-weight:700;font-size:1.05rem}
+.sheet td.type{font-weight:600;white-space:nowrap}
+.sheet td.sign{min-width:90px;height:52px}
+.sheet td.notes{font-size:.85rem;color:var(--muted)}
 .sheet td.actions{white-space:nowrap}
-.sheet td.actions button{padding:6px 10px;font-size:.85rem;margin:2px}
-button.danger{background:transparent;color:var(--err);border:1.5px solid var(--err);font-weight:600}
-.form-actions{display:flex;gap:10px;flex-wrap:wrap}
-.editing-note{background:var(--swap-soft);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-weight:600}
-.dot{display:inline-block;min-width:26px;padding:2px 6px;border-radius:8px;background:var(--brand-soft);color:var(--ink);font-weight:700;font-size:.85rem}
-.empty{color:var(--muted);text-align:center;padding:20px 0}
-.notes{color:var(--muted);font-size:.85rem;text-align:right}
+.sheet td.actions button{margin:2px}
+
 @media print{
   @page{size:A4 landscape;margin:12mm}
   body{background:#fff;color:#000}
-  .no-print,.sub,h1,.banner{display:none!important}
-  .print-only{display:block}
+  .no-print,h1,.sub{display:none!important}
   .wrap{max-width:none;padding:0}
   .card{border:0;padding:0;background:#fff}
   .table-wrap{overflow:visible}
@@ -99,12 +108,11 @@ button.danger{background:transparent;color:var(--err);border:1.5px solid var(--e
   <h1>تبادل الحصص بين المعلمات</h1>
   <p class="sub">تكتب كل معلمة اسمها واسم المعلمة البديلة وتختار الحصص (من ١ إلى ٧): تغطية من طرف واحد، أو تبادل بين المعلمتين.</p>
 
-  <div class="banner" id="demoBanner">⚠️ وضع التجربة: لم يُربط الرابط بجدول Google بعد، لذلك تُحفظ البيانات على هذا الجهاز فقط.</div>
-
-  <section class="card no-print">
+  <!-- نموذج التسجيل -->
+  <section class="card no-print" id="formCard">
     <h2 id="formTitle">تسجيل تبادل جديد</h2>
     <form id="form" novalidate>
-      <div class="editing-note" id="editingNote" hidden>✏️ تعديل تبادل محفوظ — غيّري ما تريدين ثم اضغطي «حفظ التعديل».</div>
+      <div class="editing-note" id="editingNote" hidden>✏️ تعديل طلب محفوظ — غيّري ما تريدين ثم اضغطي «حفظ التعديل».</div>
       <div class="grid">
         <div class="field">
           <label for="teacher">اسم المعلمة</label>
@@ -146,46 +154,74 @@ button.danger{background:transparent;color:var(--err);border:1.5px solid var(--e
     </form>
   </section>
 
-  <section class="card">
-    <h2 id="listTitle">جدول التبادل</h2>
-    <div class="toolbar no-print">
-      <div class="field">
-        <label for="viewDate">عرض يوم</label>
-        <input type="date" id="viewDate">
-      </div>
-      <button type="button" class="ghost" id="refreshBtn">تحديث</button>
-      <button type="button" class="ghost" onclick="window.print()">طباعة</button>
+  <!-- طلباتي -->
+  <section class="card no-print" id="mineCard" hidden>
+    <h2>طلباتي</h2>
+    <p class="hint">الطلبات التي سجّلتِها من هذا الجهاز. تقدرين تعدّلينها أو تلغينها.</p>
+    <div class="mine" id="mineList"></div>
+  </section>
+
+  <!-- الإدارة -->
+  <section class="card" id="adminCard" hidden>
+    <div class="no-print" id="loginBox">
+      <h2>دخول الإدارة 🔒</h2>
+      <form class="login" id="loginForm">
+        <div class="field">
+          <label for="pin">الرمز السري</label>
+          <input type="password" id="pin" autocomplete="current-password" required>
+        </div>
+        <button type="submit" id="loginBtn">دخول</button>
+        <button type="button" class="ghost" id="closeAdmin">إغلاق</button>
+      </form>
+      <div class="msg" id="loginMsg" role="status"></div>
     </div>
-    <div class="table-wrap">
-      <table class="sheet">
-        <thead>
-          <tr>
-            <th>م</th>
-            <th>المعلمة</th>
-            <th>الحصة</th>
-            <th>المعلمة البديلة</th>
-            <th>الحصة</th>
-            <th>نوع الطلب</th>
-            <th>التوقيع</th>
-            <th>ملاحظات</th>
-            <th class="no-print">إجراءات</th>
-          </tr>
-        </thead>
-        <tbody id="tbody"><tr><td colspan="9" class="empty">جارٍ التحميل…</td></tr></tbody>
-      </table>
+
+    <div id="adminBox" hidden>
+      <h2 id="listTitle">سجل التبادل</h2>
+      <div class="toolbar no-print">
+        <div class="field">
+          <label for="viewDate">عرض يوم</label>
+          <input type="date" id="viewDate">
+        </div>
+        <button type="button" class="ghost" id="refreshBtn">تحديث</button>
+        <button type="button" class="ghost" onclick="window.print()">طباعة</button>
+        <button type="button" class="ghost" id="logoutBtn">خروج</button>
+      </div>
+      <div class="table-wrap">
+        <table class="sheet">
+          <thead>
+            <tr>
+              <th>م</th>
+              <th>المعلمة</th>
+              <th>الحصة</th>
+              <th>المعلمة البديلة</th>
+              <th>الحصة</th>
+              <th>نوع الطلب</th>
+              <th>التوقيع</th>
+              <th>ملاحظات</th>
+              <th class="no-print">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
     </div>
   </section>
+
+  <div class="admin-entry no-print" id="adminEntry">
+    <button type="button" class="ghost" id="openAdmin">🔒 دخول الإدارة</button>
+  </div>
 </main>
 
 <script>
-/* ضعي هنا رابط تطبيق الويب من Google Apps Script بعد النشر (ينتهي بـ /exec) */
+/* رابط تطبيق الويب من Google Apps Script (ينتهي بـ /exec) */
 const API_URL = "https://script.google.com/macros/s/AKfycbxzRkNX0m5grKEF_lNXfBJs3lhaNuiVb5UT6E2tGBBChlVD7N7HYygOP9sG16Zdrm3i/exec";
 
 const AR = ["١","٢","٣","٤","٥","٦","٧"];
 const AR_NUM = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const $ = id => document.getElementById(id);
-const DEMO = !API_URL;
-const LS_KEY = "lesson-exchange-demo";
+const fmtP = l => (l && l.length) ? l.map(p => AR[p-1]).join("، ") : "—";
+const isSwapRow = r => (r.returnPeriods || []).length > 0;
 
 function today(){
   const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
@@ -196,18 +232,18 @@ function fmtDate(s){
   catch(e){ return s; }
 }
 
-/* ---------- Storage: Apps Script or local demo ---------- */
-function demoRows(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)) || []; }catch(e){ return []; } }
-function demoSave(rows){ try{ localStorage.setItem(LS_KEY, JSON.stringify(rows)); }catch(e){} }
+/* ---------- تخزين في جهاز المعلمة ---------- */
+const store = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const MINE_KEY = "lesson-exchange-mine";       // [{id, token}]
+const NAME_KEY = "lesson-exchange-name";
+let adminPin = (() => { try{ return sessionStorage.getItem("lesson-exchange-pin") || ""; }catch(e){ return ""; } })();
+function setPin(p){ adminPin = p; try{ p ? sessionStorage.setItem("lesson-exchange-pin", p) : sessionStorage.removeItem("lesson-exchange-pin"); }catch(e){} }
 
-async function apiList(date){
-  if (DEMO) return demoRows().filter(r => r.date === date);
-  const res = await fetch(API_URL + "?date=" + encodeURIComponent(date));
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || "تعذّر التحميل");
-  return data.rows;
-}
-async function apiPost(payload){
+/* ---------- الاتصال بالخادم ---------- */
+async function api(payload){
   const res = await fetch(API_URL, {
     method:"POST",
     headers:{"Content-Type":"text/plain;charset=utf-8"},
@@ -215,36 +251,8 @@ async function apiPost(payload){
   });
   return res.json();
 }
-async function apiDelete(id){
-  if (DEMO){
-    const rows = demoRows(), n = rows.length;
-    demoSave(rows.filter(r => r.id !== id));
-    return n === demoRows().length ? {ok:false, error:"لم يُعثر على هذا السجل."} : {ok:true};
-  }
-  return apiPost({action:"delete", id});
-}
-async function apiSave(entry){
-  if (DEMO){
-    const rows = demoRows();
-    if (entry.id && !rows.some(r => r.id === entry.id)) return {ok:false, error:"لم يُعثر على هذا السجل."};
-    const existing = rows.filter(r => r.date === entry.date && r.id !== entry.id).flatMap(assignments);
-    const busy = [];
-    assignments(entry).forEach(a => existing.forEach(x => {
-      if (x.p !== a.p) return;
-      if (x.coverer === a.coverer) busy.push("المعلمة " + a.coverer + " تغطي حصة أخرى في الحصة " + a.p);
-      if (x.owner === a.owner) busy.push("الحصة " + a.p + " للمعلمة " + a.owner + " مسجّلة مسبقًا");
-    }));
-    if (busy.length) return {ok:false, error:"يوجد تعارض: " + [...new Set(busy)].join("، ")};
-    const rec = {...entry, id: entry.id || String(Date.now()), createdAt: new Date().toISOString()};
-    delete rec.action;
-    if (entry.id) rows[rows.findIndex(r => r.id === entry.id)] = rec; else rows.push(rec);
-    demoSave(rows);
-    return {ok:true};
-  }
-  return apiPost(entry);
-}
 
-/* ---------- UI ---------- */
+/* ---------- النموذج ---------- */
 const periodsBox = $("periods"), retBox = $("retPeriods");
 for (let i = 1; i <= 7; i++){
   periodsBox.insertAdjacentHTML("beforeend",
@@ -253,6 +261,7 @@ for (let i = 1; i <= 7; i++){
     `<input type="checkbox" id="r${i}" value="${i}"><label for="r${i}">${AR[i-1]}<small>الحصة</small></label>`);
 }
 const isSwap = () => $("modeSwap").checked;
+const checked = box => [...box.querySelectorAll("input:checked")].map(i => +i.value);
 function updateMode(){
   $("retField").hidden = !isSwap();
   const t = $("teacher").value.trim() || "المعلمة";
@@ -263,73 +272,18 @@ function updateMode(){
 document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", updateMode));
 $("substitute").addEventListener("input", updateMode);
 $("teacher").addEventListener("input", updateMode);
-const checked = box => [...box.querySelectorAll("input:checked")].map(i => +i.value);
-const assignments = r => r.periods.map(p => ({p, coverer:r.substitute, owner:r.teacher}))
-  .concat((r.returnPeriods || []).map(p => ({p, coverer:r.teacher, owner:r.substitute})));
 $("date").value = today();
 $("viewDate").value = today();
-if (DEMO) $("demoBanner").style.display = "block";
+$("teacher").value = store.get(NAME_KEY, "");
+updateMode();
 
-try{
-  const saved = localStorage.getItem("lesson-exchange-name");
-  if (saved) $("teacher").value = saved;
-}catch(e){}
+function showMsg(el, text, ok){ el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
+function clearMsg(el){ el.className = "msg"; el.textContent = ""; }
 
-function showMsg(text, ok){
-  const m = $("msg"); m.textContent = text; m.className = "msg " + (ok ? "ok" : "err");
-}
-
-async function load(){
-  const date = $("viewDate").value || today();
-  $("listTitle").textContent = "جدول التبادل — " + fmtDate(date);
-  const tbody = $("tbody");
-  try{
-    const rows = await apiList(date);
-    tbody.innerHTML = "";
-    if (!rows.length){
-      tbody.innerHTML = '<tr><td colspan="9" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
-      return;
-    }
-    currentRows = rows;
-    const fmtP = l => (l && l.length) ? l.map(p => AR[p-1]).join("، ") : "—";
-    rows.forEach((r, idx) => {
-      const tr = document.createElement("tr");
-      const cell = (text, cls) => {
-        const c = document.createElement("td");
-        if (cls) c.className = cls;
-        c.textContent = text;
-        tr.append(c);
-        return c;
-      };
-      const swap = (r.returnPeriods || []).length > 0;
-      cell(AR_NUM(idx + 1), "num");
-      cell(r.teacher, "name");
-      cell(fmtP(r.returnPeriods), "per");
-      cell(r.substitute, "name");
-      cell(fmtP(r.periods), "per");
-      cell(swap ? "تبادل ⇄" : "تغطية", "type");
-      cell("", "sign");
-      cell(r.notes || "", "notes");
-      const act = cell("", "actions no-print");
-      const eb = document.createElement("button");
-      eb.type = "button"; eb.className = "ghost"; eb.textContent = "تعديل";
-      eb.addEventListener("click", () => startEdit(r));
-      const db = document.createElement("button");
-      db.type = "button"; db.className = "danger"; db.textContent = "حذف";
-      db.addEventListener("click", () => removeRow(r, db));
-      act.append(eb, db);
-      tbody.append(tr);
-    });
-  }catch(e){
-    tbody.innerHTML = '<tr><td colspan="9" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
-  }
-}
-
-/* ---------- Edit / delete ---------- */
-let currentRows = [], editingId = null;
+let editing = null; // {id, by:"mine"|"admin"}
 
 function resetForm(){
-  editingId = null;
+  editing = null;
   $("substitute").value = ""; $("notes").value = "";
   document.querySelectorAll(".periods input").forEach(i => i.checked = false);
   $("modeCover").checked = true;
@@ -339,42 +293,37 @@ function resetForm(){
   updateMode();
 }
 
-function startEdit(r){
-  editingId = r.id;
+function startEdit(r, by){
+  editing = {id: r.id, by};
   $("teacher").value = r.teacher;
   $("substitute").value = r.substitute;
   $("date").value = r.date;
   $("notes").value = r.notes || "";
-  const swap = (r.returnPeriods || []).length > 0;
-  (swap ? $("modeSwap") : $("modeCover")).checked = true;
+  (isSwapRow(r) ? $("modeSwap") : $("modeCover")).checked = true;
   periodsBox.querySelectorAll("input").forEach(i => i.checked = r.periods.includes(+i.value));
   retBox.querySelectorAll("input").forEach(i => i.checked = (r.returnPeriods || []).includes(+i.value));
   $("editingNote").hidden = false; $("cancelEdit").hidden = false;
-  $("formTitle").textContent = "تعديل تبادل";
+  $("formTitle").textContent = "تعديل طلب";
   $("submitBtn").textContent = "حفظ التعديل";
-  $("msg").className = "msg";
+  clearMsg($("msg"));
   updateMode();
-  $("formTitle").scrollIntoView({behavior:"smooth", block:"start"});
+  $("formCard").scrollIntoView({behavior:"smooth", block:"start"});
 }
+$("cancelEdit").addEventListener("click", () => { resetForm(); clearMsg($("msg")); });
 
-async function removeRow(r, btn){
-  const what = r.teacher + " ← " + r.substitute;
-  if (!confirm("حذف تبادل «" + what + "» نهائيًا؟")) return;
-  btn.disabled = true; btn.textContent = "جارٍ الحذف…";
-  try{
-    const res = await apiDelete(r.id);
-    if (!res.ok){ alert(res.error || "تعذّر الحذف."); }
-    if (editingId === r.id) resetForm();
-  }catch(e){
-    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+/** يضيف بيانات الصلاحية: رمز الطلب للمعلمة، أو الرمز السري للإدارة */
+function withAuth(payload, id, by){
+  if (by === "admin") payload.pin = adminPin;
+  else {
+    const it = store.get(MINE_KEY, []).find(x => x.id === id);
+    if (it) payload.token = it.token;
   }
-  load();
+  return payload;
 }
-
-$("cancelEdit").addEventListener("click", () => { resetForm(); $("msg").className = "msg"; });
 
 $("form").addEventListener("submit", async ev => {
   ev.preventDefault();
+  const msg = $("msg");
   const entry = {
     teacher: $("teacher").value.trim(),
     substitute: $("substitute").value.trim(),
@@ -384,42 +333,167 @@ $("form").addEventListener("submit", async ev => {
     swap: isSwap(),
     notes: $("notes").value.trim()
   };
-  if (editingId){ entry.action = "update"; entry.id = editingId; }
-  if (!entry.teacher || !entry.substitute) return showMsg("الرجاء كتابة اسم المعلمة واسم المعلمة البديلة.", false);
-  if (entry.teacher === entry.substitute) return showMsg("لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.", false);
-  if (!entry.date) return showMsg("الرجاء اختيار التاريخ.", false);
-  if (!entry.periods.length) return showMsg("الرجاء اختيار حصة واحدة على الأقل.", false);
-  if (entry.swap && !entry.returnPeriods.length) return showMsg("في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
+  if (!entry.teacher || !entry.substitute) return showMsg(msg, "الرجاء كتابة اسم المعلمة واسم المعلمة البديلة.", false);
+  if (entry.teacher === entry.substitute) return showMsg(msg, "لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.", false);
+  if (!entry.date) return showMsg(msg, "الرجاء اختيار التاريخ.", false);
+  if (!entry.periods.length) return showMsg(msg, "الرجاء اختيار حصة واحدة على الأقل.", false);
+  if (entry.swap && !entry.returnPeriods.length) return showMsg(msg, "في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
 
-  const btn = $("submitBtn"); const label = btn.textContent;
+  const wasEditing = editing;
+  const payload = wasEditing
+    ? withAuth({...entry, action:"update", id: wasEditing.id}, wasEditing.id, wasEditing.by)
+    : {...entry, action:"add"};
+
+  const btn = $("submitBtn"), label = btn.textContent;
   btn.disabled = true; btn.textContent = "جارٍ الحفظ…";
   let saved = false;
   try{
-    const res = await apiSave(entry);
+    const res = await api(payload);
     if (res.ok){
       saved = true;
-      const fmt = l => l.map(p => AR[p-1]).join("، ");
-      showMsg(entry.action === "update" ? "تم حفظ التعديل ✓" : (entry.swap
-        ? "تم حفظ التبادل ✓ " + entry.substitute + " تأخذ الحصص: " + fmt(entry.periods) + " — و" + entry.teacher + " تأخذ الحصص: " + fmt(entry.returnPeriods)
-        : "تم حفظ التغطية ✓ الحصص: " + fmt(entry.periods)), true);
-      try{ localStorage.setItem("lesson-exchange-name", entry.teacher); }catch(e){}
+      if (!wasEditing){
+        const mine = store.get(MINE_KEY, []);
+        mine.push({id: res.id, token: res.token});
+        store.set(MINE_KEY, mine);
+      }
+      store.set(NAME_KEY, entry.teacher);
+      showMsg(msg, wasEditing ? "تم حفظ التعديل بنجاح ✓" : "تم الحفظ بنجاح ✓", true);
       resetForm();
-      $("viewDate").value = entry.date;
-      load();
+      loadMine();
+      if (adminPin && !$("adminBox").hidden){ $("viewDate").value = entry.date; loadAdmin(); }
     } else {
-      showMsg(res.error || "تعذّر الحفظ.", false);
+      showMsg(msg, res.error || "تعذّر الحفظ.", false);
     }
   }catch(e){
-    showMsg("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
+    showMsg(msg, "تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
   }finally{
     btn.disabled = false;
     if (!saved) btn.textContent = label;
   }
 });
 
-$("viewDate").addEventListener("change", load);
-$("refreshBtn").addEventListener("click", load);
-load();
+async function removeReq(r, by, btn){
+  const word = by === "admin" ? "حذف" : "إلغاء";
+  if (!confirm(word + " طلب «" + r.teacher + " ← " + r.substitute + "» يوم " + fmtDate(r.date) + "؟")) return;
+  btn.disabled = true; btn.textContent = "جارٍ…";
+  try{
+    const res = await api(withAuth({action:"delete", id: r.id}, r.id, by));
+    if (!res.ok) alert(res.error || "تعذّر الحذف.");
+    if (editing && editing.id === r.id) resetForm();
+  }catch(e){
+    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+  }
+  loadMine();
+  if (by === "admin") loadAdmin();
+}
+
+/* ---------- طلباتي ---------- */
+async function loadMine(){
+  const mine = store.get(MINE_KEY, []);
+  if (!mine.length){ $("mineCard").hidden = true; return; }
+  try{
+    const res = await api({action:"mine", items: mine});
+    if (!res.ok) return;
+    // ننسى الطلبات التي حُذفت من الجدول
+    const alive = new Set(res.rows.map(r => r.id));
+    store.set(MINE_KEY, mine.filter(x => alive.has(x.id)));
+    const rows = res.rows.sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+    const list = $("mineList");
+    list.innerHTML = "";
+    $("mineCard").hidden = !rows.length;
+    rows.forEach(r => {
+      const box = document.createElement("div"); box.className = "req";
+      const info = document.createElement("div"); info.className = "info";
+      const when = document.createElement("div"); when.className = "when"; when.textContent = fmtDate(r.date);
+      const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = isSwapRow(r) ? "تبادل ⇄" : "تغطية";
+      when.append(tag);
+      const l1 = document.createElement("div"); l1.className = "line";
+      l1.textContent = r.substitute + " تأخذ: " + fmtP(r.periods) + (isSwapRow(r) ? " — " + r.teacher + " تأخذ: " + fmtP(r.returnPeriods) : "");
+      info.append(when, l1);
+      if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
+      const btns = document.createElement("div"); btns.className = "btns";
+      const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
+      eb.addEventListener("click", () => startEdit(r, "mine"));
+      const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "إلغاء الطلب";
+      db.addEventListener("click", () => removeReq(r, "mine", db));
+      btns.append(eb, db);
+      box.append(info, btns);
+      list.append(box);
+    });
+  }catch(e){ /* بدون إنترنت: نترك القائمة كما هي */ }
+}
+
+/* ---------- الإدارة ---------- */
+function showAdmin(open){
+  $("adminCard").hidden = !open;
+  $("adminEntry").hidden = open;
+  $("loginBox").hidden = !!adminPin;
+  $("adminBox").hidden = !adminPin;
+  if (open && adminPin) loadAdmin();
+  if (open && !adminPin) setTimeout(() => $("pin").focus(), 50);
+}
+$("openAdmin").addEventListener("click", () => { showAdmin(true); $("adminCard").scrollIntoView({behavior:"smooth"}); });
+$("closeAdmin").addEventListener("click", () => showAdmin(false));
+$("logoutBtn").addEventListener("click", () => { setPin(""); if (editing && editing.by === "admin") resetForm(); showAdmin(false); });
+
+$("loginForm").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const pin = $("pin").value;
+  if (!pin) return;
+  const btn = $("loginBtn"); btn.disabled = true;
+  try{
+    const res = await api({action:"login", pin});
+    if (res.ok){ setPin(pin); $("pin").value = ""; clearMsg($("loginMsg")); showAdmin(true); }
+    else showMsg($("loginMsg"), res.error || "تعذّر الدخول.", false);
+  }catch(e){
+    showMsg($("loginMsg"), "تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
+  }finally{ btn.disabled = false; }
+});
+
+async function loadAdmin(){
+  const date = $("viewDate").value || today();
+  $("listTitle").textContent = "سجل التبادل — " + fmtDate(date);
+  const tbody = $("tbody");
+  tbody.innerHTML = '<tr><td colspan="9" class="empty">جارٍ التحميل…</td></tr>';
+  try{
+    const res = await api({action:"list", pin: adminPin, date});
+    if (!res.ok){
+      if (res.auth){ setPin(""); showAdmin(true); showMsg($("loginMsg"), res.error, false); return; }
+      throw new Error(res.error);
+    }
+    tbody.innerHTML = "";
+    if (!res.rows.length){
+      tbody.innerHTML = '<tr><td colspan="9" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
+      return;
+    }
+    res.rows.forEach((r, idx) => {
+      const tr = document.createElement("tr");
+      const cell = (text, cls) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
+      cell(AR_NUM(idx + 1), "num");
+      cell(r.teacher, "name");
+      cell(fmtP(r.returnPeriods), "per");
+      cell(r.substitute, "name");
+      cell(fmtP(r.periods), "per");
+      cell(isSwapRow(r) ? "تبادل ⇄" : "تغطية", "type");
+      cell("", "sign");
+      cell(r.notes || "", "notes");
+      const act = cell("", "actions no-print");
+      const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
+      eb.addEventListener("click", () => startEdit(r, "admin"));
+      const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "حذف";
+      db.addEventListener("click", () => removeReq(r, "admin", db));
+      act.append(eb, db);
+      tbody.append(tr);
+    });
+  }catch(e){
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
+  }
+}
+$("viewDate").addEventListener("change", loadAdmin);
+$("refreshBtn").addEventListener("click", loadAdmin);
+
+if (adminPin) showAdmin(true);
+loadMine();
 </script>
 </body>
 </html>
