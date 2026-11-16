@@ -147,7 +147,7 @@ function doGet() {
  *  update  نفس حقول add + {id, token | pin}
  *  delete  {id, token | pin}
  *  login   {pin}
- *  list    {pin, date}                                                       → {ok, rows}
+ *  list    {date}                                                            → {ok, rows}
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -163,8 +163,7 @@ function doPost(e) {
     }
 
     if (action === 'list') {
-      const st = checkPin_(body.pin);
-      if (st !== 'ok') return json_({ ok: false, error: PIN_ERRORS[st], auth: true });
+      // جدول اليوم يظهر للجميع (بدون رموز الطلبات)؛ التعديل والحذف هما المحميان
       const date = clean_(body.date, 10);
       return json_({ ok: true, rows: readAll_(sh).filter(r => !date || r.date === date).map(publicRow_) });
     }
