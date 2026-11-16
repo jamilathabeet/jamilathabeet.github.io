@@ -6,7 +6,6 @@
  */
 const SHEET_NAME = 'التبادل';
 const HEADERS = ['الطابع الزمني', 'التاريخ', 'المعلمة', 'المعلمة البديلة', 'الحصص', 'ملاحظات', 'المعرف', 'حصص البديلة (للتبادل)'];
-const TZ = 'Asia/Riyadh';
 
 /**
  * شغّليها مرة واحدة من المحرر (زر «تنفيذ») لمنح الأذونات وإنشاء الجدول.
@@ -51,7 +50,8 @@ function json_(obj) {
 }
 
 function fmtDate_(v) {
-  return v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd') : String(v || '');
+  // لو حوّل الجدول النص إلى تاريخ، نقرؤه بتوقيت المشروع نفسه حتى لا يتغيّر اليوم
+  return v instanceof Date ? Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd') : String(v || '').trim();
 }
 
 function readRows_() {
@@ -70,7 +70,8 @@ function readRows_() {
 }
 
 function parsePeriods_(v) {
-  return String(v == null ? '' : v).split(',').map(Number).filter(p => p >= 1 && p <= 7);
+  // يقبل «1,4» وأيضًا «1.4» لو حوّلها الجدول إلى رقم عشري
+  return String(v == null ? '' : v).split(/[^0-9]+/).map(Number).filter(p => p >= 1 && p <= 7);
 }
 
 function cleanPeriods_(list) {
@@ -127,7 +128,11 @@ function doPost(e) {
     if (busy.length) return json_({ ok: false, error: 'يوجد تعارض: ' + [...new Set(busy)].join('، ') });
 
     const id = Utilities.getUuid();
-    getSheet_().appendRow([new Date(), date, teacher, substitute, periods.join(','), notes, id, returnPeriods.join(',')]);
+    // نكتب الصف كنص صريح حتى لا يحوّل الجدول التاريخ أو الحصص تلقائيًا
+    const sh = getSheet_();
+    const range = sh.getRange(sh.getLastRow() + 1, 1, 1, HEADERS.length);
+    range.setNumberFormats([['yyyy-mm-dd hh:mm', '@', '@', '@', '@', '@', '@', '@']]);
+    range.setValues([[new Date(), date, teacher, substitute, periods.join(','), notes, id, returnPeriods.join(',')]]);
     return json_({ ok: true, id: id });
   } catch (err) {
     return json_({ ok: false, error: 'حدث خطأ في الخادم: ' + err });
