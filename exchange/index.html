@@ -75,6 +75,10 @@ button:disabled{opacity:.6;cursor:wait}
 .admin-bar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--swap-soft);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-weight:600}
 #loginBox{margin-bottom:14px}
 .no-acts .act-col{display:none}
+.date-col{display:none;white-space:nowrap}
+.all-days .date-col{display:table-cell}
+.all-days .day-only{display:none!important}
+button.on{background:var(--brand);color:var(--brand-ink)}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
 .toolbar .field{margin:0;flex:1;min-width:160px}
 .login{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
@@ -178,7 +182,7 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <section class="card" id="listCard">
     <h2 id="listTitle">جدول التبادل</h2>
     <div class="toolbar no-print">
-      <div class="field">
+      <div class="field day-only">
         <label for="viewDate">عرض يوم</label>
         <input type="date" id="viewDate">
       </div>
@@ -199,13 +203,18 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
     </div>
     <div class="admin-bar no-print" id="adminBar" hidden>
       <span>✓ وضع الإدارة: تقدرين تعدّلين أو تحذفين أي طلب.</span>
-      <button type="button" class="ghost small" id="logoutBtn">خروج</button>
+      <span class="form-actions">
+        <button type="button" class="ghost small" id="allDaysBtn">كل الأيام</button>
+        <button type="button" class="ghost small" id="csvBtn">تحميل Excel</button>
+        <button type="button" class="ghost small" id="logoutBtn">خروج</button>
+      </span>
     </div>
     <div class="table-wrap">
       <table class="sheet">
         <thead>
           <tr>
             <th>م</th>
+            <th class="date-col">التاريخ</th>
             <th>المعلمة</th>
             <th>الحصة</th>
             <th>الصف</th>
@@ -218,7 +227,7 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
             <th class="no-print act-col" id="actHead">إجراءات</th>
           </tr>
         </thead>
-        <tbody id="tbody"><tr><td colspan="11" class="empty">جارٍ التحميل…</td></tr></tbody>
+        <tbody id="tbody"><tr><td colspan="12" class="empty">جارٍ التحميل…</td></tr></tbody>
       </table>
     </div>
   </section>
@@ -296,6 +305,7 @@ function clearMsg(el){ el.className = "msg"; el.textContent = ""; }
 let editing = null; // {id, by:"mine"|"admin"}
 
 function resetForm(){
+  if (editing && editing.by === "admin") $("teacher").value = store.get(NAME_KEY, "");
   editing = null;
   $("substitute").value = ""; $("notes").value = "";
   $("cls").value = ""; $("retCls").value = "";
@@ -376,7 +386,8 @@ $("form").addEventListener("submit", async ev => {
         mine.push({id: res.id, token: res.token});
         store.set(MINE_KEY, mine);
       }
-      store.set(NAME_KEY, entry.teacher);
+      const byAdmin = wasEditing && wasEditing.by === "admin";
+      if (!byAdmin) store.set(NAME_KEY, entry.teacher);
       showMsg(msg, wasEditing ? "تم حفظ التعديل بنجاح ✓" : "تم الحفظ بنجاح ✓", true);
       resetForm();
       loadMine();
@@ -459,8 +470,34 @@ $("adminToggle").addEventListener("click", () => {
 });
 $("closeLogin").addEventListener("click", () => { $("loginBox").hidden = true; clearMsg($("loginMsg")); });
 $("logoutBtn").addEventListener("click", () => {
-  setPin(""); if (editing && editing.by === "admin") resetForm();
+  setPin(""); allDays = false; if (editing && editing.by === "admin") resetForm();
   showAdminUI(); loadList();
+});
+
+let allDays = false;
+$("allDaysBtn").addEventListener("click", () => { allDays = !allDays; loadList(); });
+
+/* تحميل السجل كملف يفتح في Excel (CSV مع BOM حتى تظهر العربية صحيحة) */
+$("csvBtn").addEventListener("click", async () => {
+  const btn = $("csvBtn"); btn.disabled = true;
+  try{
+    const res = await api({action:"list", pin: adminPin});
+    if (!res.ok){ alert(res.error || "تعذّر التحميل."); return; }
+    const head = ["التاريخ","المعلمة","الحصة","الصف","المعلمة البديلة","الحصة","الصف","نوع الطلب","ملاحظات"];
+    const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+    const lines = [head.map(q).join(",")].concat(res.rows.map(r => [
+      r.date, r.teacher, fmtP(r.returnPeriods), isSwapRow(r) ? (r.retCls || "") : "—",
+      r.substitute, fmtP(r.periods), r.cls || "", isSwapRow(r) ? "تبادل" : "تغطية", r.notes || ""
+    ].map(q).join(",")));
+    const blob = new Blob(["\ufeff" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "lesson-exchange-" + today() + ".csv";
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }catch(e){
+    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+  }finally{ btn.disabled = false; }
 });
 
 $("loginForm").addEventListener("submit", async ev => {
@@ -478,22 +515,30 @@ $("loginForm").addEventListener("submit", async ev => {
 });
 
 async function loadList(){
+  if (!adminPin) allDays = false;
   const date = $("viewDate").value || today();
-  $("listTitle").textContent = "جدول التبادل — " + fmtDate(date);
+  $("listCard").classList.toggle("all-days", allDays);
+  $("allDaysBtn").classList.toggle("on", allDays);
+  $("allDaysBtn").textContent = allDays ? "عرض يوم واحد" : "كل الأيام";
+  $("listTitle").textContent = allDays ? "سجل التبادل — كل الأيام" : "جدول التبادل — " + fmtDate(date);
   const tbody = $("tbody");
   try{
-    const res = await api({action:"list", date});
-    if (!res.ok) throw new Error(res.error);
+    const res = await api(allDays ? {action:"list", pin: adminPin} : {action:"list", date});
+    if (!res.ok){
+      if (res.auth){ setPin(""); allDays = false; showAdminUI(); }
+      throw new Error(res.error);
+    }
     tbody.innerHTML = "";
     const mine = mineIds();
     let anyActs = false;
     if (!res.rows.length){
-      tbody.innerHTML = '<tr><td colspan="11" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="12" class="empty">' + (allDays ? "لا يوجد أي تبادل مسجّل." : "لا يوجد تبادل مسجّل لهذا اليوم.") + '</td></tr>';
     }
     res.rows.forEach((r, idx) => {
       const tr = document.createElement("tr");
       const cell = (text, cls) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; tr.append(c); return c; };
       cell(AR_NUM(idx + 1), "num");
+      cell(r.date.split("-").reverse().join("/"), "date-col");
       cell(r.teacher, "name");
       cell(fmtP(r.returnPeriods), "per");
       cell(isSwapRow(r) ? (r.retCls || "") : "—", "cls");
@@ -519,7 +564,7 @@ async function loadList(){
     });
     $("listCard").classList.toggle("no-acts", !anyActs);
   }catch(e){
-    tbody.innerHTML = '<tr><td colspan="11" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
   }
 }
 $("viewDate").addEventListener("change", loadList);

@@ -147,7 +147,7 @@ function doGet() {
  *  update  نفس حقول add + {id, token | pin}
  *  delete  {id, token | pin}
  *  login   {pin}
- *  list    {date}                                                            → {ok, rows}
+ *  list    {date}  (أو بدون تاريخ + pin = كل الأيام للإدارة)                    → {ok, rows}
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -163,9 +163,15 @@ function doPost(e) {
     }
 
     if (action === 'list') {
-      // جدول اليوم يظهر للجميع (بدون رموز الطلبات)؛ التعديل والحذف هما المحميان
+      // جدول يوم محدد يظهر للجميع (بدون رموز الطلبات)؛ كل الأيام للإدارة فقط
       const date = clean_(body.date, 10);
-      return json_({ ok: true, rows: readAll_(sh).filter(r => !date || r.date === date).map(publicRow_) });
+      if (!date) {
+        const st = checkPin_(body.pin);
+        if (st !== 'ok') return json_({ ok: false, error: PIN_ERRORS[st], auth: true });
+        const all = readAll_(sh).sort((x, y) => y.date.localeCompare(x.date) || x.createdAt.localeCompare(y.createdAt));
+        return json_({ ok: true, rows: all.map(publicRow_) });
+      }
+      return json_({ ok: true, rows: readAll_(sh).filter(r => r.date === date).map(publicRow_) });
     }
 
     if (action === 'mine') {
