@@ -32,6 +32,8 @@ input[type=date]{-webkit-appearance:none;appearance:none;display:block;min-heigh
 input:focus,textarea:focus{outline:2px solid var(--brand);outline-offset:1px}
 textarea{min-height:64px;resize:vertical}
 .field{margin-bottom:14px}
+.cls-field{margin-top:10px;max-width:260px}
+.cls-field label{font-weight:600;font-size:.9rem}
 .periods{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 @media (max-width:480px){.periods{grid-template-columns:repeat(4,1fr)}}
 .periods input{position:absolute;opacity:0;pointer-events:none}
@@ -76,12 +78,13 @@ button:disabled{opacity:.6;cursor:wait}
 .login{display:flex;gap:10px;align-items:end;flex-wrap:wrap}
 .login .field{margin:0;flex:1;min-width:180px}
 .table-wrap{overflow-x:auto}
-table.sheet{width:100%;min-width:680px;border-collapse:collapse}
+table.sheet{width:100%;min-width:760px;border-collapse:collapse}
 .sheet th,.sheet td{padding:8px 6px;border:1px solid var(--line);text-align:center;vertical-align:middle;word-wrap:break-word}
 .sheet th{font-size:.85rem;font-weight:700;background:var(--brand-soft)}
 .sheet td.num{width:36px;color:var(--muted)}
 .sheet td.name{font-weight:600}
 .sheet td.per{font-weight:700;font-size:1.05rem}
+.sheet td.cls{font-weight:600;white-space:nowrap}
 .sheet td.type{font-weight:600;white-space:nowrap}
 .sheet td.sign{min-width:90px;height:52px}
 .sheet td.notes{font-size:.85rem;color:var(--muted)}
@@ -137,14 +140,22 @@ table.sheet{width:100%;min-width:680px;border-collapse:collapse}
       <div class="field">
         <label id="periodsLabel">الحصص التي تأخذها البديلة (من حصص المعلمة)</label>
         <div class="periods" id="periods"></div>
+        <div class="cls-field">
+          <label for="cls" id="clsLabel">الصف</label>
+          <input type="text" id="cls" maxlength="30" placeholder="مثال: ٥/٢">
+        </div>
       </div>
       <div class="field" id="retField" hidden>
         <label id="retLabel">الحصص التي تأخذها المعلمة (من حصص البديلة)</label>
         <div class="periods ret" id="retPeriods"></div>
+        <div class="cls-field">
+          <label for="retCls" id="retClsLabel">الصف</label>
+          <input type="text" id="retCls" maxlength="30" placeholder="مثال: ٦/١">
+        </div>
       </div>
       <div class="field">
         <label for="notes">ملاحظات (اختياري)</label>
-        <textarea id="notes" name="notes" maxlength="300" placeholder="مثال: الصف الثالث / الفصل ب"></textarea>
+        <textarea id="notes" name="notes" maxlength="300" placeholder="أي معلومة إضافية"></textarea>
       </div>
       <div class="form-actions">
         <button type="submit" id="submitBtn">حفظ التبادل</button>
@@ -194,8 +205,10 @@ table.sheet{width:100%;min-width:680px;border-collapse:collapse}
               <th>م</th>
               <th>المعلمة</th>
               <th>الحصة</th>
+              <th>الصف</th>
               <th>المعلمة البديلة</th>
               <th>الحصة</th>
+              <th>الصف</th>
               <th>نوع الطلب</th>
               <th>التوقيع</th>
               <th>ملاحظات</th>
@@ -268,6 +281,8 @@ function updateMode(){
   const sub = $("substitute").value.trim() || "البديلة";
   $("periodsLabel").textContent = "الحصص التي تأخذها " + sub + " (من حصص " + t + ")";
   $("retLabel").textContent = "الحصص التي تأخذها " + t + " (من حصص " + sub + ")";
+  $("clsLabel").textContent = "صف حصص " + t;
+  $("retClsLabel").textContent = "صف حصص " + sub;
 }
 document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", updateMode));
 $("substitute").addEventListener("input", updateMode);
@@ -285,6 +300,7 @@ let editing = null; // {id, by:"mine"|"admin"}
 function resetForm(){
   editing = null;
   $("substitute").value = ""; $("notes").value = "";
+  $("cls").value = ""; $("retCls").value = "";
   document.querySelectorAll(".periods input").forEach(i => i.checked = false);
   $("modeCover").checked = true;
   $("editingNote").hidden = true; $("cancelEdit").hidden = true;
@@ -299,6 +315,8 @@ function startEdit(r, by){
   $("substitute").value = r.substitute;
   $("date").value = r.date;
   $("notes").value = r.notes || "";
+  $("cls").value = r.cls || "";
+  $("retCls").value = r.retCls || "";
   (isSwapRow(r) ? $("modeSwap") : $("modeCover")).checked = true;
   periodsBox.querySelectorAll("input").forEach(i => i.checked = r.periods.includes(+i.value));
   retBox.querySelectorAll("input").forEach(i => i.checked = (r.returnPeriods || []).includes(+i.value));
@@ -330,6 +348,8 @@ $("form").addEventListener("submit", async ev => {
     date: $("date").value,
     periods: checked(periodsBox),
     returnPeriods: isSwap() ? checked(retBox) : [],
+    cls: $("cls").value.trim(),
+    retCls: isSwap() ? $("retCls").value.trim() : "",
     swap: isSwap(),
     notes: $("notes").value.trim()
   };
@@ -338,6 +358,8 @@ $("form").addEventListener("submit", async ev => {
   if (!entry.date) return showMsg(msg, "الرجاء اختيار التاريخ.", false);
   if (!entry.periods.length) return showMsg(msg, "الرجاء اختيار حصة واحدة على الأقل.", false);
   if (entry.swap && !entry.returnPeriods.length) return showMsg(msg, "في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
+  if (!entry.cls) return showMsg(msg, "الرجاء كتابة صف حصص " + entry.teacher + ".", false);
+  if (entry.swap && !entry.retCls) return showMsg(msg, "الرجاء كتابة صف حصص " + entry.substitute + ".", false);
 
   const wasEditing = editing;
   const payload = wasEditing
@@ -408,7 +430,8 @@ async function loadMine(){
       const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = isSwapRow(r) ? "تبادل ⇄" : "تغطية";
       when.append(tag);
       const l1 = document.createElement("div"); l1.className = "line";
-      l1.textContent = r.substitute + " تأخذ: " + fmtP(r.periods) + (isSwapRow(r) ? " — " + r.teacher + " تأخذ: " + fmtP(r.returnPeriods) : "");
+      const withCls = (l, c) => fmtP(l) + (c ? " (" + c + ")" : "");
+      l1.textContent = r.substitute + " تأخذ: " + withCls(r.periods, r.cls) + (isSwapRow(r) ? " — " + r.teacher + " تأخذ: " + withCls(r.returnPeriods, r.retCls) : "");
       info.append(when, l1);
       if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
       const btns = document.createElement("div"); btns.className = "btns";
@@ -454,7 +477,7 @@ async function loadAdmin(){
   const date = $("viewDate").value || today();
   $("listTitle").textContent = "سجل التبادل — " + fmtDate(date);
   const tbody = $("tbody");
-  tbody.innerHTML = '<tr><td colspan="9" class="empty">جارٍ التحميل…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" class="empty">جارٍ التحميل…</td></tr>';
   try{
     const res = await api({action:"list", pin: adminPin, date});
     if (!res.ok){
@@ -463,7 +486,7 @@ async function loadAdmin(){
     }
     tbody.innerHTML = "";
     if (!res.rows.length){
-      tbody.innerHTML = '<tr><td colspan="9" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="11" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
       return;
     }
     res.rows.forEach((r, idx) => {
@@ -472,8 +495,10 @@ async function loadAdmin(){
       cell(AR_NUM(idx + 1), "num");
       cell(r.teacher, "name");
       cell(fmtP(r.returnPeriods), "per");
+      cell(isSwapRow(r) ? (r.retCls || "") : "—", "cls");
       cell(r.substitute, "name");
       cell(fmtP(r.periods), "per");
+      cell(r.cls || "", "cls");
       cell(isSwapRow(r) ? "تبادل ⇄" : "تغطية", "type");
       cell("", "sign");
       cell(r.notes || "", "notes");
@@ -486,7 +511,7 @@ async function loadAdmin(){
       tbody.append(tr);
     });
   }catch(e){
-    tbody.innerHTML = '<tr><td colspan="9" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" class="empty">تعذّر تحميل البيانات، حاولي التحديث.</td></tr>';
   }
 }
 $("viewDate").addEventListener("change", loadAdmin);

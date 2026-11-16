@@ -1,17 +1,18 @@
 /**
  * خادم صفحة تبادل الحصص — يُلصق في مشروع Google Apps Script (مستقل أو مرتبط بجدول).
  *
- * الأعمدة: الطابع الزمني | التاريخ | المعلمة | المعلمة البديلة | الحصص | ملاحظات | المعرف | حصص البديلة (للتبادل) | رمز الطلب
+ * الأعمدة: الطابع الزمني | التاريخ | المعلمة | المعلمة البديلة | الحصص | ملاحظات | المعرف | حصص البديلة (للتبادل) | رمز الطلب | صف المعلمة | صف البديلة
  *  - «الحصص»: حصص المعلمة التي تأخذها البديلة.
  *  - «حصص البديلة»: حصص البديلة التي تأخذها المعلمة مقابلها (فارغة = تغطية فقط).
  *  - «رمز الطلب»: رمز سري يُعطى للمعلمة عند الحفظ ويُحفظ في جهازها، لتعدّل طلبها أو تلغيه.
+ *  - «صف المعلمة»: صف حصص المعلمة التي تأخذها البديلة. «صف البديلة»: صف حصص البديلة التي تأخذها المعلمة (في التبادل).
  *
  * الرمز السري للإدارة لا يُكتب هنا، بل في:
  *   إعدادات المشروع ⚙️ ← خصائص النص البرمجي ← إضافة خاصية:  ADMIN_PIN = <الرمز>
  */
 const SHEET_NAME = 'التبادل';
-const HEADERS = ['الطابع الزمني', 'التاريخ', 'المعلمة', 'المعلمة البديلة', 'الحصص', 'ملاحظات', 'المعرف', 'حصص البديلة (للتبادل)', 'رمز الطلب'];
-const TEXT_FORMATS = [['yyyy-mm-dd hh:mm', '@', '@', '@', '@', '@', '@', '@', '@']];
+const HEADERS = ['الطابع الزمني', 'التاريخ', 'المعلمة', 'المعلمة البديلة', 'الحصص', 'ملاحظات', 'المعرف', 'حصص البديلة (للتبادل)', 'رمز الطلب', 'صف المعلمة', 'صف البديلة'];
+const TEXT_FORMATS = [['yyyy-mm-dd hh:mm', '@', '@', '@', '@', '@', '@', '@', '@', '@', '@']];
 
 /**
  * شغّليها مرة واحدة من المحرر (زر «تنفيذ») لمنح الأذونات وإنشاء الجدول.
@@ -79,7 +80,9 @@ function readAll_(sh) {
       periods: parsePeriods_(r[4]),
       returnPeriods: parsePeriods_(r[7]),
       notes: String(r[5] || ''),
-      id: String(r[6])
+      id: String(r[6]),
+      cls: String(r[9] || ''),
+      retCls: String(r[10] || '')
     });
   }
   return out;
@@ -88,7 +91,8 @@ function readAll_(sh) {
 /** ما يُرسل للصفحة: بدون الرمز ورقم الصف */
 function publicRow_(r) {
   return { createdAt: r.createdAt, date: r.date, teacher: r.teacher, substitute: r.substitute,
-           periods: r.periods, returnPeriods: r.returnPeriods, notes: r.notes, id: r.id };
+           periods: r.periods, returnPeriods: r.returnPeriods, notes: r.notes, id: r.id,
+           cls: r.cls, retCls: r.retCls };
 }
 
 function parsePeriods_(v) {
@@ -138,7 +142,7 @@ function doGet() {
 
 /**
  * POST (نص JSON) — الحقل action:
- *  add     {teacher, substitute, date, periods, returnPeriods, swap, notes}  → {ok, id, token}
+ *  add     {teacher, substitute, date, periods, cls, returnPeriods, retCls, swap, notes}  → {ok, id, token}
  *  mine    {items:[{id, token}]}                                            → {ok, rows}
  *  update  نفس حقول add + {id, token | pin}
  *  delete  {id, token | pin}
@@ -196,12 +200,16 @@ function doPost(e) {
     const notes = clean_(body.notes, 300);
     const periods = cleanPeriods_(body.periods);
     const returnPeriods = cleanPeriods_(body.returnPeriods);
+    const cls = clean_(body.cls, 30);
+    const retCls = returnPeriods.length ? clean_(body.retCls, 30) : '';
 
     if (!teacher || !substitute) return json_({ ok: false, error: 'الرجاء كتابة اسم المعلمة واسم المعلمة البديلة.' });
     if (teacher === substitute) return json_({ ok: false, error: 'لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json_({ ok: false, error: 'التاريخ غير صحيح.' });
     if (!periods.length) return json_({ ok: false, error: 'الرجاء اختيار حصة واحدة على الأقل.' });
     if (body.swap && !returnPeriods.length) return json_({ ok: false, error: 'في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.' });
+    if (!cls) return json_({ ok: false, error: 'الرجاء كتابة الصف.' });
+    if (returnPeriods.length && !retCls) return json_({ ok: false, error: 'الرجاء كتابة صف المعلمة البديلة.' });
 
     // منع التعارض في نفس اليوم (مع تجاهل الطلب نفسه عند التعديل)
     const existing = [];
@@ -222,7 +230,7 @@ function doPost(e) {
     // نكتب الصف كنص صريح حتى لا يحوّل الجدول التاريخ أو الحصص تلقائيًا
     const range = sh.getRange(row, 1, 1, HEADERS.length);
     range.setNumberFormats(TEXT_FORMATS);
-    range.setValues([[new Date(), date, teacher, substitute, periods.join(','), notes, id, returnPeriods.join(','), token]]);
+    range.setValues([[new Date(), date, teacher, substitute, periods.join(','), notes, id, returnPeriods.join(','), token, cls, retCls]]);
     return json_({ ok: true, id: id, token: token });
   } catch (err) {
     return json_({ ok: false, error: 'حدث خطأ في الخادم: ' + err });
