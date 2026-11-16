@@ -8,13 +8,13 @@
 :root{
   --bg:#f2f6f3; --card:#ffffff; --ink:#12302b; --muted:#5b726d; --line:#d7e3dc;
   --brand:#2a8a3f; --brand-ink:#ffffff; --brand-soft:#e3f2e6; --err:#b3261e; --err-soft:#fdecea;
-  --warn:#8a5a00; --warn-soft:#fff4dc;
+  --warn:#8a5a00; --warn-soft:#fff4dc; --swap:#2f6db5; --swap-soft:#e1ecf8;
 }
 @media (prefers-color-scheme: dark){
   :root{
     --bg:#0f1a17; --card:#16241f; --ink:#e4efe9; --muted:#9db3ab; --line:#2a3d36;
     --brand:#4fb565; --brand-ink:#0b1712; --brand-soft:#1d3a26; --err:#ff8a80; --err-soft:#3a1d1b;
-    --warn:#ffcc66; --warn-soft:#3a2f14;
+    --warn:#ffcc66; --warn-soft:#3a2f14; --swap:#7fb0ec; --swap-soft:#1b2c42;
   }
 }
 *{box-sizing:border-box}
@@ -36,6 +36,16 @@ textarea{min-height:64px;resize:vertical}
 .periods input{position:absolute;opacity:0;pointer-events:none}
 .periods label{margin:0;text-align:center;padding:10px 0;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-weight:600;user-select:none;background:var(--bg)}
 .periods input:checked + label{background:var(--brand);border-color:var(--brand);color:var(--brand-ink)}
+.periods.ret input:checked + label{background:var(--swap);border-color:var(--swap);color:var(--brand-ink)}
+.mode{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mode input{position:absolute;opacity:0;pointer-events:none}
+.mode label{margin:0;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;background:var(--bg)}
+.mode label small{display:block;font-weight:400;color:var(--muted);font-size:.8rem}
+.mode input:checked + label{border-color:var(--brand);background:var(--brand-soft)}
+.mode input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
+.dot.ret{background:var(--swap-soft)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:.85rem;margin-top:10px}
+.tag{display:inline-block;font-size:.75rem;font-weight:600;padding:0 8px;border-radius:8px;background:var(--swap-soft);margin-inline-start:6px}
 .periods input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
 .periods small{display:block;font-weight:400;font-size:.75rem;opacity:.8}
 button{font:inherit;font-weight:700;border:0;border-radius:10px;padding:12px 20px;cursor:pointer;background:var(--brand);color:var(--brand-ink)}
@@ -67,7 +77,7 @@ td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
 <body>
 <main class="wrap">
   <h1>تبادل الحصص بين المعلمات</h1>
-  <p class="sub">تكتب كل معلمة اسمها واسم المعلمة البديلة وتختار حصص التبادل (من الحصة ١ إلى ٧).</p>
+  <p class="sub">تكتب كل معلمة اسمها واسم المعلمة البديلة وتختار الحصص (من ١ إلى ٧): تغطية من طرف واحد، أو تبادل بين المعلمتين.</p>
 
   <div class="banner" id="demoBanner">⚠️ وضع التجربة: لم يُربط الرابط بجدول Google بعد، لذلك تُحفظ البيانات على هذا الجهاز فقط.</div>
 
@@ -89,8 +99,19 @@ td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
         <input type="date" id="date" name="date" required>
       </div>
       <div class="field">
-        <label>حصص التبادل</label>
+        <label>نوع الطلب</label>
+        <div class="mode">
+          <input type="radio" name="mode" id="modeCover" value="cover" checked><label for="modeCover">تغطية<small>البديلة تأخذ حصتي فقط</small></label>
+          <input type="radio" name="mode" id="modeSwap" value="swap"><label for="modeSwap">تبادل ⇄<small>كل وحدة تأخذ حصة الثانية</small></label>
+        </div>
+      </div>
+      <div class="field">
+        <label id="periodsLabel">حصصي التي تأخذها البديلة</label>
         <div class="periods" id="periods"></div>
+      </div>
+      <div class="field" id="retField" hidden>
+        <label id="retLabel">حصص البديلة التي سآخذها مقابلها</label>
+        <div class="periods ret" id="retPeriods"></div>
       </div>
       <div class="field">
         <label for="notes">ملاحظات (اختياري)</label>
@@ -122,6 +143,7 @@ td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
         <tbody id="tbody"><tr><td colspan="8" class="empty">جارٍ التحميل…</td></tr></tbody>
       </table>
     </div>
+    <div class="legend"><span><span class="dot">✓</span> البديلة تأخذ حصة المعلمة</span><span><span class="dot ret">⇄</span> المعلمة تأخذ حصة البديلة (تبادل)</span></div>
   </section>
 </main>
 
@@ -157,9 +179,14 @@ async function apiList(date){
 async function apiAdd(entry){
   if (DEMO){
     const rows = demoRows();
-    const clash = rows.filter(r => r.date === entry.date).some(r =>
-      r.periods.some(p => entry.periods.includes(p) && (r.substitute === entry.substitute || r.teacher === entry.teacher)));
-    if (clash) return {ok:false, error:"يوجد تعارض: إحدى الحصص المختارة مسجّلة مسبقًا لنفس المعلمة."};
+    const existing = rows.filter(r => r.date === entry.date).flatMap(assignments);
+    const busy = [];
+    assignments(entry).forEach(a => existing.forEach(x => {
+      if (x.p !== a.p) return;
+      if (x.coverer === a.coverer) busy.push("المعلمة " + a.coverer + " تغطي حصة أخرى في الحصة " + a.p);
+      if (x.owner === a.owner) busy.push("الحصة " + a.p + " للمعلمة " + a.owner + " مسجّلة مسبقًا");
+    }));
+    if (busy.length) return {ok:false, error:"يوجد تعارض: " + [...new Set(busy)].join("، ")};
     rows.push({...entry, id: String(Date.now()), createdAt: new Date().toISOString()});
     demoSave(rows);
     return {ok:true};
@@ -173,11 +200,25 @@ async function apiAdd(entry){
 }
 
 /* ---------- UI ---------- */
-const periodsBox = $("periods");
+const periodsBox = $("periods"), retBox = $("retPeriods");
 for (let i = 1; i <= 7; i++){
   periodsBox.insertAdjacentHTML("beforeend",
     `<input type="checkbox" id="p${i}" value="${i}"><label for="p${i}">${AR[i-1]}<small>الحصة</small></label>`);
+  retBox.insertAdjacentHTML("beforeend",
+    `<input type="checkbox" id="r${i}" value="${i}"><label for="r${i}">${AR[i-1]}<small>الحصة</small></label>`);
 }
+const isSwap = () => $("modeSwap").checked;
+function updateMode(){
+  $("retField").hidden = !isSwap();
+  const sub = $("substitute").value.trim() || "البديلة";
+  $("retLabel").textContent = "حصص " + sub + " التي سآخذها مقابلها";
+  $("periodsLabel").textContent = "حصصي التي تأخذها " + sub;
+}
+document.querySelectorAll("input[name=mode]").forEach(r => r.addEventListener("change", updateMode));
+$("substitute").addEventListener("input", updateMode);
+const checked = box => [...box.querySelectorAll("input:checked")].map(i => +i.value);
+const assignments = r => r.periods.map(p => ({p, coverer:r.substitute, owner:r.teacher}))
+  .concat((r.returnPeriods || []).map(p => ({p, coverer:r.teacher, owner:r.substitute})));
 $("date").value = today();
 $("viewDate").value = today();
 if (DEMO) $("demoBanner").style.display = "block";
@@ -206,9 +247,11 @@ async function load(){
       const tr = document.createElement("tr");
       const td = document.createElement("td");
       td.className = "name";
+      const swap = (r.returnPeriods || []).length > 0;
       td.append(r.teacher);
+      if (swap){ const t = document.createElement("span"); t.className = "tag"; t.textContent = "تبادل"; td.append(t); }
       const s = document.createElement("span");
-      s.className = "sub-name"; s.textContent = "البديلة: " + r.substitute;
+      s.className = "sub-name"; s.textContent = (swap ? "مع: " : "البديلة: ") + r.substitute;
       td.append(s);
       if (r.notes){
         const n = document.createElement("span");
@@ -218,7 +261,13 @@ async function load(){
       tr.append(td);
       for (let i = 1; i <= 7; i++){
         const c = document.createElement("td");
-        if (r.periods.includes(i)) c.innerHTML = '<span class="dot">✓</span>';
+        if (r.periods.includes(i)){
+          c.innerHTML = '<span class="dot">✓</span>';
+          c.title = r.substitute + " تأخذ حصة " + r.teacher;
+        } else if ((r.returnPeriods || []).includes(i)){
+          c.innerHTML = '<span class="dot ret">⇄</span>';
+          c.title = r.teacher + " تأخذ حصة " + r.substitute;
+        }
         tr.append(c);
       }
       tbody.append(tr);
@@ -234,22 +283,29 @@ $("form").addEventListener("submit", async ev => {
     teacher: $("teacher").value.trim(),
     substitute: $("substitute").value.trim(),
     date: $("date").value,
-    periods: [...periodsBox.querySelectorAll("input:checked")].map(i => +i.value),
+    periods: checked(periodsBox),
+    returnPeriods: isSwap() ? checked(retBox) : [],
+    swap: isSwap(),
     notes: $("notes").value.trim()
   };
   if (!entry.teacher || !entry.substitute) return showMsg("الرجاء كتابة اسم المعلمة واسم المعلمة البديلة.", false);
   if (entry.teacher === entry.substitute) return showMsg("لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.", false);
   if (!entry.date) return showMsg("الرجاء اختيار التاريخ.", false);
   if (!entry.periods.length) return showMsg("الرجاء اختيار حصة واحدة على الأقل.", false);
+  if (entry.swap && !entry.returnPeriods.length) return showMsg("في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
 
   const btn = $("submitBtn"); btn.disabled = true; btn.textContent = "جارٍ الحفظ…";
   try{
     const res = await apiAdd(entry);
     if (res.ok){
-      showMsg("تم حفظ التبادل بنجاح ✓ الحصص: " + entry.periods.map(p => AR[p-1]).join("، "), true);
+      const fmt = l => l.map(p => AR[p-1]).join("، ");
+      showMsg(entry.swap
+        ? "تم حفظ التبادل ✓ " + entry.substitute + " تأخذ الحصص: " + fmt(entry.periods) + " — وأنتِ تأخذين حصصها: " + fmt(entry.returnPeriods)
+        : "تم حفظ التغطية ✓ الحصص: " + fmt(entry.periods), true);
       try{ localStorage.setItem("lesson-exchange-name", entry.teacher); }catch(e){}
       $("substitute").value = ""; $("notes").value = "";
-      periodsBox.querySelectorAll("input").forEach(i => i.checked = false);
+      document.querySelectorAll(".periods input").forEach(i => i.checked = false);
+      $("modeCover").checked = true; updateMode();
       $("viewDate").value = entry.date;
       load();
     } else {
