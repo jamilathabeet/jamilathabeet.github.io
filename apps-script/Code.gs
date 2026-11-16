@@ -7,8 +7,7 @@
  *  - «رمز الطلب»: رمز سري يُعطى للمعلمة عند الحفظ ويُحفظ في جهازها، لتعدّل طلبها أو تلغيه.
  *  - «صف المعلمة»: صف حصص المعلمة التي تأخذها البديلة. «صف البديلة»: صف حصص البديلة التي تأخذها المعلمة (في التبادل).
  *
- * الرمز السري للإدارة لا يُكتب هنا، بل في:
- *   إعدادات المشروع ⚙️ ← خصائص النص البرمجي ← إضافة خاصية:  ADMIN_PIN = <الرمز>
+ * التعديل والإلغاء من الصفحة لصاحبة الطلب فقط؛ وأي تعديل آخر يكون من جدول Google مباشرة.
  */
 const SHEET_NAME = 'التبادل';
 const HEADERS = ['الطابع الزمني', 'التاريخ', 'المعلمة', 'المعلمة البديلة', 'الحصص', 'ملاحظات', 'المعرف', 'حصص البديلة (للتبادل)', 'رمز الطلب', 'صف المعلمة', 'صف البديلة'];
@@ -22,9 +21,6 @@ function setup() {
   const ss = getSpreadsheet_();
   getSheet_();
   Logger.log('تم التجهيز ✓ رابط جدول البيانات: ' + ss.getUrl());
-  Logger.log(PropertiesService.getScriptProperties().getProperty('ADMIN_PIN')
-    ? 'الرمز السري للإدارة مضبوط ✓'
-    : '⚠️ لم يُضبط الرمز السري بعد: إعدادات المشروع ⚙️ ← خصائص النص البرمجي ← ADMIN_PIN');
 }
 
 /** يعمل سواء كان المشروع مرتبطًا بجدول أو مستقلًا (ينشئ جدولًا باسم «تبادل الحصص» أول مرة). */
@@ -114,27 +110,6 @@ function clean_(s, max) {
   return String(s || '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
 
-/**
- * التحقق من رمز الإدارة، مع إيقاف مؤقت بعد محاولات خاطئة كثيرة.
- * يرجع: 'ok' | 'wrong' | 'locked' | 'unset'
- */
-function checkPin_(pin) {
-  const real = PropertiesService.getScriptProperties().getProperty('ADMIN_PIN');
-  if (!real) return 'unset';
-  const cache = CacheService.getScriptCache();
-  const fails = Number(cache.get('pin_fails') || 0);
-  if (fails >= 10) return 'locked';
-  if (String(pin || '') === String(real)) return 'ok';
-  cache.put('pin_fails', String(fails + 1), 600);
-  return 'wrong';
-}
-
-const PIN_ERRORS = {
-  wrong: 'الرمز السري غير صحيح.',
-  locked: 'محاولات خاطئة كثيرة، حاولي بعد ١٠ دقائق.',
-  unset: 'لم يُضبط الرمز السري في إعدادات المشروع بعد.'
-};
-
 /** الرابط المباشر لا يعرض أي بيانات */
 function doGet() {
   return json_({ ok: true, message: 'خادم تبادل الحصص يعمل ✓' });
@@ -144,10 +119,9 @@ function doGet() {
  * POST (نص JSON) — الحقل action:
  *  add     {teacher, substitute, date, periods, cls, returnPeriods, retCls, swap, notes}  → {ok, id, token}
  *  mine    {items:[{id, token}]}                                            → {ok, rows}
- *  update  نفس حقول add + {id, token | pin}
- *  delete  {id, token | pin}
- *  login   {pin}
- *  list    {date}  (أو بدون تاريخ + pin = كل الأيام للإدارة)                    → {ok, rows}
+ *  update  نفس حقول add + {id, token}
+ *  delete  {id, token}
+ *  list    {date}  (بدون تاريخ = كل الأيام)                                   → {ok, rows}
  */
 function doPost(e) {
   const lock = LockService.getScriptLock();
@@ -157,17 +131,10 @@ function doPost(e) {
     const action = body.action || 'add';
     const sh = getSheet_();
 
-    if (action === 'login') {
-      const st = checkPin_(body.pin);
-      return json_(st === 'ok' ? { ok: true } : { ok: false, error: PIN_ERRORS[st] });
-    }
-
     if (action === 'list') {
-      // جدول يوم محدد يظهر للجميع (بدون رموز الطلبات)؛ كل الأيام للإدارة فقط
+      // يوم محدد، أو كل الأيام بدون تاريخ (بدون رموز الطلبات)
       const date = clean_(body.date, 10);
       if (!date) {
-        const st = checkPin_(body.pin);
-        if (st !== 'ok') return json_({ ok: false, error: PIN_ERRORS[st], auth: true });
         const all = readAll_(sh).sort((x, y) => y.date.localeCompare(x.date) || x.createdAt.localeCompare(y.createdAt));
         return json_({ ok: true, rows: all.map(publicRow_) });
       }
@@ -181,16 +148,13 @@ function doPost(e) {
       return json_({ ok: true, rows: rows });
     }
 
-    // التعديل والحذف: صاحبة الطلب (بالرمز المحفوظ في جهازها) أو الإدارة (بالرمز السري)
+    // التعديل والحذف لصاحبة الطلب فقط (بالرمز المحفوظ في جهازها)
     let target = null;
     if (action === 'update' || action === 'delete') {
       target = readAll_(sh).find(r => r.id === String(body.id || ''));
       if (!target) return json_({ ok: false, error: 'لم يُعثر على هذا الطلب، ربما حُذف مسبقًا.' });
       const ownerOk = target.token && body.token && String(body.token) === target.token;
-      if (!ownerOk) {
-        const st = body.pin ? checkPin_(body.pin) : 'wrong';
-        if (st !== 'ok') return json_({ ok: false, error: body.pin ? PIN_ERRORS[st] : 'لا يمكنك تعديل هذا الطلب.' });
-      }
+      if (!ownerOk) return json_({ ok: false, error: 'لا يمكنك تعديل هذا الطلب.' });
       if (action === 'delete') {
         sh.deleteRow(target.row);
         return json_({ ok: true });

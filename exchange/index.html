@@ -72,8 +72,6 @@ button:disabled{opacity:.6;cursor:wait}
 .tag{display:inline-block;font-size:.75rem;font-weight:600;padding:0 8px;border-radius:8px;background:var(--swap-soft);margin-inline-start:6px}
 
 /* الإدارة */
-.admin-bar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;background:var(--swap-soft);border-radius:10px;padding:8px 12px;margin-bottom:14px;font-weight:600}
-#loginBox{margin-bottom:14px}
 .no-acts .act-col{display:none}
 .date-col{display:none;white-space:nowrap}
 .all-days .date-col{display:table-cell}
@@ -188,26 +186,8 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
       </div>
       <button type="button" class="ghost" id="refreshBtn">تحديث</button>
       <button type="button" class="ghost" onclick="window.print()">طباعة</button>
-      <button type="button" class="ghost" id="adminToggle">🔒 الإدارة</button>
-    </div>
-    <div class="no-print" id="loginBox" hidden>
-      <form class="login" id="loginForm">
-        <div class="field">
-          <label for="pin">الرمز السري للإدارة</label>
-          <input type="password" id="pin" autocomplete="current-password" required>
-        </div>
-        <button type="submit" id="loginBtn">دخول</button>
-        <button type="button" class="ghost" id="closeLogin">إغلاق</button>
-      </form>
-      <div class="msg" id="loginMsg" role="status"></div>
-    </div>
-    <div class="admin-bar no-print" id="adminBar" hidden>
-      <span>✓ وضع الإدارة: تقدرين تعدّلين أو تحذفين أي طلب.</span>
-      <span class="form-actions">
-        <button type="button" class="ghost small" id="allDaysBtn">كل الأيام</button>
-        <button type="button" class="ghost small" id="csvBtn">تحميل Excel</button>
-        <button type="button" class="ghost small" id="logoutBtn">خروج</button>
-      </span>
+      <button type="button" class="ghost" id="allDaysBtn">كل الأيام</button>
+      <button type="button" class="ghost" id="csvBtn">تحميل Excel</button>
     </div>
     <div class="table-wrap">
       <table class="sheet">
@@ -259,8 +239,6 @@ const store = {
 };
 const MINE_KEY = "lesson-exchange-mine";       // [{id, token}]
 const NAME_KEY = "lesson-exchange-name";
-let adminPin = (() => { try{ return sessionStorage.getItem("lesson-exchange-pin") || ""; }catch(e){ return ""; } })();
-function setPin(p){ adminPin = p; try{ p ? sessionStorage.setItem("lesson-exchange-pin", p) : sessionStorage.removeItem("lesson-exchange-pin"); }catch(e){} }
 
 /* ---------- الاتصال بالخادم ---------- */
 async function api(payload){
@@ -302,10 +280,9 @@ updateMode();
 function showMsg(el, text, ok){ el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
 function clearMsg(el){ el.className = "msg"; el.textContent = ""; }
 
-let editing = null; // {id, by:"mine"|"admin"}
+let editing = null; // {id}
 
 function resetForm(){
-  if (editing && editing.by === "admin") $("teacher").value = store.get(NAME_KEY, "");
   editing = null;
   $("substitute").value = ""; $("notes").value = "";
   $("cls").value = ""; $("retCls").value = "";
@@ -317,8 +294,8 @@ function resetForm(){
   updateMode();
 }
 
-function startEdit(r, by){
-  editing = {id: r.id, by};
+function startEdit(r){
+  editing = {id: r.id};
   $("teacher").value = r.teacher;
   $("substitute").value = r.substitute;
   $("date").value = r.date;
@@ -337,13 +314,10 @@ function startEdit(r, by){
 }
 $("cancelEdit").addEventListener("click", () => { resetForm(); clearMsg($("msg")); });
 
-/** يضيف بيانات الصلاحية: رمز الطلب للمعلمة، أو الرمز السري للإدارة */
-function withAuth(payload, id, by){
-  if (by === "admin") payload.pin = adminPin;
-  else {
-    const it = store.get(MINE_KEY, []).find(x => x.id === id);
-    if (it) payload.token = it.token;
-  }
+/** يضيف رمز الطلب المحفوظ في جهاز المعلمة */
+function withToken(payload, id){
+  const it = store.get(MINE_KEY, []).find(x => x.id === id);
+  if (it) payload.token = it.token;
   return payload;
 }
 
@@ -371,7 +345,7 @@ $("form").addEventListener("submit", async ev => {
 
   const wasEditing = editing;
   const payload = wasEditing
-    ? withAuth({...entry, action:"update", id: wasEditing.id}, wasEditing.id, wasEditing.by)
+    ? withToken({...entry, action:"update", id: wasEditing.id}, wasEditing.id)
     : {...entry, action:"add"};
 
   const btn = $("submitBtn"), label = btn.textContent;
@@ -386,8 +360,7 @@ $("form").addEventListener("submit", async ev => {
         mine.push({id: res.id, token: res.token});
         store.set(MINE_KEY, mine);
       }
-      const byAdmin = wasEditing && wasEditing.by === "admin";
-      if (!byAdmin) store.set(NAME_KEY, entry.teacher);
+      store.set(NAME_KEY, entry.teacher);
       showMsg(msg, wasEditing ? "تم حفظ التعديل بنجاح ✓" : "تم الحفظ بنجاح ✓", true);
       resetForm();
       loadMine();
@@ -404,12 +377,11 @@ $("form").addEventListener("submit", async ev => {
   }
 });
 
-async function removeReq(r, by, btn){
-  const word = by === "admin" ? "حذف" : "إلغاء";
-  if (!confirm(word + " طلب «" + r.teacher + " ← " + r.substitute + "» يوم " + fmtDate(r.date) + "؟")) return;
+async function removeReq(r, btn){
+  if (!confirm("إلغاء طلب «" + r.teacher + " ← " + r.substitute + "» يوم " + fmtDate(r.date) + "؟")) return;
   btn.disabled = true; btn.textContent = "جارٍ…";
   try{
-    const res = await api(withAuth({action:"delete", id: r.id}, r.id, by));
+    const res = await api(withToken({action:"delete", id: r.id}, r.id));
     if (!res.ok) alert(res.error || "تعذّر الحذف.");
     if (editing && editing.id === r.id) resetForm();
   }catch(e){
@@ -446,9 +418,9 @@ async function loadMine(){
       if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
       const btns = document.createElement("div"); btns.className = "btns";
       const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
-      eb.addEventListener("click", () => startEdit(r, "mine"));
+      eb.addEventListener("click", () => startEdit(r));
       const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "إلغاء الطلب";
-      db.addEventListener("click", () => removeReq(r, "mine", db));
+      db.addEventListener("click", () => removeReq(r, db));
       btns.append(eb, db);
       box.append(info, btns);
       list.append(box);
@@ -456,23 +428,8 @@ async function loadMine(){
   }catch(e){ /* بدون إنترنت: نترك القائمة كما هي */ }
 }
 
-/* ---------- جدول التبادل والإدارة ---------- */
+/* ---------- جدول التبادل ---------- */
 const mineIds = () => new Set(store.get(MINE_KEY, []).map(x => x.id));
-
-function showAdminUI(){
-  $("adminBar").hidden = !adminPin;
-  $("adminToggle").hidden = !!adminPin;
-  if (adminPin) $("loginBox").hidden = true;
-}
-$("adminToggle").addEventListener("click", () => {
-  $("loginBox").hidden = !$("loginBox").hidden;
-  if (!$("loginBox").hidden) setTimeout(() => $("pin").focus(), 50);
-});
-$("closeLogin").addEventListener("click", () => { $("loginBox").hidden = true; clearMsg($("loginMsg")); });
-$("logoutBtn").addEventListener("click", () => {
-  setPin(""); allDays = false; if (editing && editing.by === "admin") resetForm();
-  showAdminUI(); loadList();
-});
 
 let allDays = false;
 $("allDaysBtn").addEventListener("click", () => { allDays = !allDays; loadList(); });
@@ -481,7 +438,7 @@ $("allDaysBtn").addEventListener("click", () => { allDays = !allDays; loadList()
 $("csvBtn").addEventListener("click", async () => {
   const btn = $("csvBtn"); btn.disabled = true;
   try{
-    const res = await api({action:"list", pin: adminPin});
+    const res = await api({action:"list"});
     if (!res.ok){ alert(res.error || "تعذّر التحميل."); return; }
     const head = ["التاريخ","المعلمة","الحصة","الصف","المعلمة البديلة","الحصة","الصف","نوع الطلب","ملاحظات"];
     const q = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
@@ -500,22 +457,7 @@ $("csvBtn").addEventListener("click", async () => {
   }finally{ btn.disabled = false; }
 });
 
-$("loginForm").addEventListener("submit", async ev => {
-  ev.preventDefault();
-  const pin = $("pin").value;
-  if (!pin) return;
-  const btn = $("loginBtn"); btn.disabled = true;
-  try{
-    const res = await api({action:"login", pin});
-    if (res.ok){ setPin(pin); $("pin").value = ""; clearMsg($("loginMsg")); showAdminUI(); loadList(); }
-    else showMsg($("loginMsg"), res.error || "تعذّر الدخول.", false);
-  }catch(e){
-    showMsg($("loginMsg"), "تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
-  }finally{ btn.disabled = false; }
-});
-
 async function loadList(){
-  if (!adminPin) allDays = false;
   const date = $("viewDate").value || today();
   $("listCard").classList.toggle("all-days", allDays);
   $("allDaysBtn").classList.toggle("on", allDays);
@@ -523,11 +465,8 @@ async function loadList(){
   $("listTitle").textContent = allDays ? "سجل التبادل — كل الأيام" : "جدول التبادل — " + fmtDate(date);
   const tbody = $("tbody");
   try{
-    const res = await api(allDays ? {action:"list", pin: adminPin} : {action:"list", date});
-    if (!res.ok){
-      if (res.auth){ setPin(""); allDays = false; showAdminUI(); }
-      throw new Error(res.error);
-    }
+    const res = await api(allDays ? {action:"list"} : {action:"list", date});
+    if (!res.ok) throw new Error(res.error);
     tbody.innerHTML = "";
     const mine = mineIds();
     let anyActs = false;
@@ -550,14 +489,13 @@ async function loadList(){
       cell(r.notes || "", "notes");
       const act = cell("", "actions no-print act-col");
       const isMine = mine.has(r.id);
-      if (isMine || adminPin){
+      if (isMine){
         anyActs = true;
-        const by = isMine ? "mine" : "admin";
         const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
-        eb.addEventListener("click", () => startEdit(r, by));
+        eb.addEventListener("click", () => startEdit(r));
         const db = document.createElement("button"); db.type = "button"; db.className = "danger small";
-        db.textContent = isMine ? "إلغاء" : "حذف";
-        db.addEventListener("click", () => removeReq(r, by, db));
+        db.textContent = "إلغاء";
+        db.addEventListener("click", () => removeReq(r, db));
         act.append(eb, db);
       }
       tbody.append(tr);
@@ -570,7 +508,6 @@ async function loadList(){
 $("viewDate").addEventListener("change", loadList);
 $("refreshBtn").addEventListener("click", loadList);
 
-showAdminUI();
 loadList();
 loadMine();
 </script>
