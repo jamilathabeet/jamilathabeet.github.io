@@ -59,19 +59,31 @@ button:disabled{opacity:.6;cursor:wait}
 .toolbar{display:flex;gap:10px;align-items:end;flex-wrap:wrap;margin-bottom:14px}
 .toolbar .field{margin:0;flex:1;min-width:160px}
 .table-wrap{overflow-x:auto}
-table{width:100%;border-collapse:collapse;table-layout:fixed}
-table th:first-child{width:38%}
-th,td{padding:8px 2px;word-wrap:break-word;border-bottom:1px solid var(--line);text-align:center}
-th{font-size:.85rem;color:var(--muted);font-weight:600}
-td.name{text-align:right;font-weight:600}
-td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
+table.sheet{width:100%;min-width:760px;border-collapse:collapse}
+.sheet th,.sheet td{padding:8px 6px;border:1px solid var(--line);text-align:center;vertical-align:middle;word-wrap:break-word}
+.sheet th{font-size:.85rem;font-weight:700;background:var(--brand-soft)}
+.sheet td.name{font-weight:600}
+.sheet td.sign{min-width:110px;height:52px}
+.sheet td.num{width:36px;color:var(--muted)}
+.sheet .tag{margin:4px 0 0;display:inline-block}
+.sheet td.notes{font-size:.85rem;color:var(--muted)}
+.print-only{display:none}
 .dot{display:inline-block;min-width:26px;padding:2px 6px;border-radius:8px;background:var(--brand-soft);color:var(--ink);font-weight:700;font-size:.85rem}
 .empty{color:var(--muted);text-align:center;padding:20px 0}
 .notes{color:var(--muted);font-size:.85rem;text-align:right}
 @media print{
+  @page{size:A4 landscape;margin:12mm}
   body{background:#fff;color:#000}
-  .no-print{display:none!important}
-  .card{border:0;padding:0}
+  .no-print,.sub,h1,.banner{display:none!important}
+  .print-only{display:block}
+  .wrap{max-width:none;padding:0}
+  .card{border:0;padding:0;background:#fff}
+  .table-wrap{overflow:visible}
+  table.sheet{min-width:0}
+  .sheet th,.sheet td{border:1px solid #000;color:#000}
+  .sheet th{background:#eee!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sheet td.sign{height:60px}
+  .sheet td.notes{color:#000}
 }
 </style>
 </head>
@@ -134,17 +146,22 @@ td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
       <button type="button" class="ghost" onclick="window.print()">طباعة</button>
     </div>
     <div class="table-wrap">
-      <table>
+      <table class="sheet">
         <thead>
           <tr>
-            <th style="text-align:right">المعلمة ← البديلة</th>
-            <th>١</th><th>٢</th><th>٣</th><th>٤</th><th>٥</th><th>٦</th><th>٧</th>
+            <th>م</th>
+            <th>المعلمة</th>
+            <th>الحصص التي تأخذها البديلة</th>
+            <th>توقيع المعلمة</th>
+            <th>المعلمة البديلة</th>
+            <th>الحصص التي تأخذها المعلمة<br><small>(في التبادل)</small></th>
+            <th>توقيع البديلة</th>
+            <th>ملاحظات</th>
           </tr>
         </thead>
         <tbody id="tbody"><tr><td colspan="8" class="empty">جارٍ التحميل…</td></tr></tbody>
       </table>
     </div>
-    <div class="legend"><span><span class="dot">✓</span> البديلة تأخذ حصة المعلمة</span><span><span class="dot ret">⇄</span> المعلمة تأخذ حصة البديلة (تبادل)</span></div>
   </section>
 </main>
 
@@ -153,6 +170,7 @@ td .sub-name{display:block;font-weight:400;color:var(--muted);font-size:.85rem}
 const API_URL = "https://script.google.com/macros/s/AKfycbxzRkNX0m5grKEF_lNXfBJs3lhaNuiVb5UT6E2tGBBChlVD7N7HYygOP9sG16Zdrm3i/exec";
 
 const AR = ["١","٢","٣","٤","٥","٦","٧"];
+const AR_NUM = n => String(n).replace(/\d/g, d => "٠١٢٣٤٥٦٧٨٩"[d]);
 const $ = id => document.getElementById(id);
 const DEMO = !API_URL;
 const LS_KEY = "lesson-exchange-demo";
@@ -246,38 +264,26 @@ async function load(){
       tbody.innerHTML = '<tr><td colspan="8" class="empty">لا يوجد تبادل مسجّل لهذا اليوم.</td></tr>';
       return;
     }
-    rows.forEach(r => {
+    const fmtP = l => (l && l.length) ? l.map(p => AR[p-1]).join("، ") : "—";
+    rows.forEach((r, idx) => {
       const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.className = "name";
-      const swap = (r.returnPeriods || []).length > 0;
-      td.append(r.teacher);
-      if (swap){ const t = document.createElement("span"); t.className = "tag"; t.textContent = "تبادل"; td.append(t); }
-      const s = document.createElement("span");
-      s.className = "sub-name"; s.textContent = (swap ? "مع: " : "البديلة: ") + r.substitute;
-      td.append(s);
-      const fmtP = l => l.map(p => AR[p-1]).join("، ");
-      const who = document.createElement("span");
-      who.className = "sub-name";
-      who.textContent = r.substitute + " تأخذ: " + fmtP(r.periods) + (swap ? " — " + r.teacher + " تأخذ: " + fmtP(r.returnPeriods) : "");
-      td.append(who);
-      if (r.notes){
-        const n = document.createElement("span");
-        n.className = "notes"; n.style.display = "block"; n.textContent = r.notes;
-        td.append(n);
-      }
-      tr.append(td);
-      for (let i = 1; i <= 7; i++){
+      const cell = (text, cls) => {
         const c = document.createElement("td");
-        if (r.periods.includes(i)){
-          c.innerHTML = '<span class="dot">✓</span>';
-          c.title = r.substitute + " تأخذ حصة " + r.teacher;
-        } else if ((r.returnPeriods || []).includes(i)){
-          c.innerHTML = '<span class="dot ret">⇄</span>';
-          c.title = r.teacher + " تأخذ حصة " + r.substitute;
-        }
+        if (cls) c.className = cls;
+        c.textContent = text;
         tr.append(c);
-      }
+        return c;
+      };
+      const swap = (r.returnPeriods || []).length > 0;
+      cell(AR_NUM(idx + 1), "num");
+      const t = cell(r.teacher, "name");
+      if (swap){ const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = "تبادل ⇄"; t.append(document.createElement("br"), tag); }
+      cell(fmtP(r.periods));
+      cell("", "sign");
+      cell(r.substitute, "name");
+      cell(fmtP(r.returnPeriods));
+      cell("", "sign");
+      cell(r.notes || "", "notes");
       tbody.append(tr);
     });
   }catch(e){
