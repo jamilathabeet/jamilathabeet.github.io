@@ -69,6 +69,7 @@ table.sheet{width:100%;min-width:680px;border-collapse:collapse}
 .sheet td.notes{font-size:.85rem;color:var(--muted)}
 .print-only{display:none}
 .sheet td.type{font-weight:600;white-space:nowrap}
+.sheet td.per{font-weight:700;font-size:1.05rem}
 .sheet td.actions{white-space:nowrap}
 .sheet td.actions button{padding:6px 10px;font-size:.85rem;margin:2px}
 button.danger{background:transparent;color:var(--err);border:1.5px solid var(--err);font-weight:600}
@@ -161,10 +162,10 @@ button.danger{background:transparent;color:var(--err);border:1.5px solid var(--e
           <tr>
             <th>م</th>
             <th>المعلمة</th>
+            <th>الحصص التي تأخذها</th>
             <th>المعلمة البديلة</th>
+            <th>الحصص التي تأخذها</th>
             <th>نوع الطلب</th>
-            <th>الحصص التي تأخذها البديلة</th>
-            <th>الحصص التي تأخذها المعلمة<br><small>(في التبادل)</small></th>
             <th>التوقيع</th>
             <th>ملاحظات</th>
             <th class="no-print">إجراءات</th>
@@ -303,10 +304,10 @@ async function load(){
       const swap = (r.returnPeriods || []).length > 0;
       cell(AR_NUM(idx + 1), "num");
       cell(r.teacher, "name");
+      cell(fmtP(r.returnPeriods), "per");
       cell(r.substitute, "name");
+      cell(fmtP(r.periods), "per");
       cell(swap ? "تبادل ⇄" : "تغطية", "type");
-      cell(fmtP(r.periods));
-      cell(fmtP(r.returnPeriods));
       cell("", "sign");
       cell(r.notes || "", "notes");
       const act = cell("", "actions no-print");
