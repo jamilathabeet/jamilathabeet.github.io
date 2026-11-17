@@ -254,7 +254,25 @@ const MINE_KEY = "lesson-exchange-mine";       // [{id, token}]
 const NAME_KEY = "lesson-exchange-name";
 
 /* ---------- الاتصال بالخادم ---------- */
-async function api(payload){
+/* الطلبات تُرسل واحدًا بعد الآخر (الخادم يقفل الجدول لكل طلب).
+   طلبات القراءة فقط يُعاد إرسالها مرتين إذا انقطع الاتصال؛ الحفظ لا يُعاد حتى لا يتكرر. */
+let apiQueue = Promise.resolve();
+function api(payload){
+  const readOnly = payload.action === "list" || payload.action === "mine";
+  const run = () => apiOnce(payload).catch(async e => {
+    if (!readOnly || !(e instanceof TypeError)) throw e;   // خطأ اتصال فقط (مثل Load failed)
+    await new Promise(r => setTimeout(r, 1500));
+    return apiOnce(payload).catch(async e2 => {
+      if (!(e2 instanceof TypeError)) throw e2;
+      await new Promise(r => setTimeout(r, 3000));
+      return apiOnce(payload);
+    });
+  });
+  const p = apiQueue.then(run, run);
+  apiQueue = p.catch(() => {});
+  return p;
+}
+async function apiOnce(payload){
   const res = await fetch(API_URL, {
     method:"POST",
     headers:{"Content-Type":"text/plain;charset=utf-8"},
