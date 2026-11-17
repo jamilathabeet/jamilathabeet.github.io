@@ -120,7 +120,7 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <section class="card no-print" id="formCard">
     <h2 id="formTitle">تسجيل تبادل جديد</h2>
     <form id="form" novalidate>
-      <div class="editing-note" id="editingNote" hidden>✏️ تعديل طلب محفوظ — غيّري ما تريدين ثم اضغطي «حفظ التعديل».</div>
+      <div class="editing-note" id="editingNote" hidden>✏️ تعديل طلب محفوظ: عدّلي البيانات المطلوبة، ثم اضغطي «حفظ التعديل».</div>
       <div class="grid">
         <div class="field">
           <label for="teacher">اسم المعلمة</label>
@@ -138,8 +138,8 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
       <div class="field">
         <label>نوع الطلب</label>
         <div class="mode">
-          <input type="radio" name="mode" id="modeCover" value="cover" checked><label for="modeCover">تغطية<small>البديلة تأخذ حصتي فقط</small></label>
-          <input type="radio" name="mode" id="modeSwap" value="swap"><label for="modeSwap">تبادل ⇄<small>كل وحدة تأخذ حصة الثانية</small></label>
+          <input type="radio" name="mode" id="modeCover" value="cover" checked><label for="modeCover">تغطية<small>تأخذ المعلمة البديلة حصتي فقط</small></label>
+          <input type="radio" name="mode" id="modeSwap" value="swap"><label for="modeSwap">تبادل ⇄<small>تأخذ كلٌّ منّا حصة الأخرى</small></label>
         </div>
       </div>
       <div class="field">
@@ -173,8 +173,23 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <!-- طلباتي -->
   <section class="card no-print" id="mineCard" hidden>
     <h2>طلباتي</h2>
-    <p class="hint">الطلبات التي سجّلتِها من هذا الجهاز. تقدرين تعدّلينها أو تلغينها.</p>
+    <p class="hint">الطلبات التي سجّلتِها من هذا الجهاز، ويمكنكِ تعديلها أو إلغاؤها.</p>
     <div class="mine" id="mineList"></div>
+  </section>
+
+  <!-- البحث بالاسم -->
+  <section class="card no-print" id="searchCard">
+    <h2>البحث عن الطلبات</h2>
+    <p class="hint">للبحث عن طلباتكِ اكتبي الاسم، ويمكنكِ بعدها تعديلها أو إلغاؤها من أي جهاز أو متصفح.</p>
+    <form class="login" id="searchForm">
+      <div class="field">
+        <label for="searchName">الاسم</label>
+        <input type="text" id="searchName" maxlength="80" placeholder="مثال: نورة اليحمدي">
+      </div>
+      <button type="submit" id="searchBtn">بحث</button>
+    </form>
+    <p class="hint" id="searchInfo" hidden></p>
+    <div class="mine" id="searchList"></div>
   </section>
 
   <!-- جدول التبادل -->
@@ -370,7 +385,7 @@ $("form").addEventListener("submit", async ev => {
   if (entry.teacher === entry.substitute) return showMsg(msg, "لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.", false);
   if (!entry.date) return showMsg(msg, "الرجاء اختيار التاريخ.", false);
   if (!entry.periods.length) return showMsg(msg, "الرجاء اختيار حصة واحدة على الأقل.", false);
-  if (entry.swap && !entry.returnPeriods.length) return showMsg(msg, "في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
+  if (entry.swap && !entry.returnPeriods.length) return showMsg(msg, "في حالة التبادل، يُرجى اختيار حصص المعلمة البديلة التي ستأخذينها.", false);
   if (!entry.cls) return showMsg(msg, "الرجاء كتابة صف حصص " + entry.teacher + ".", false);
   if (entry.swap && !entry.retCls) return showMsg(msg, "الرجاء كتابة صف حصص " + entry.substitute + ".", false);
 
@@ -394,13 +409,14 @@ $("form").addEventListener("submit", async ev => {
       showMsg(msg, wasEditing ? "تم حفظ التعديل بنجاح ✓" : "تم الحفظ بنجاح ✓", true);
       resetForm();
       loadMine();
+      if (lastSearch) runSearch();
       $("viewDate").value = entry.date; view = "day";
       loadList();
     } else {
       showMsg(msg, res.error || "تعذّر الحفظ.", false);
     }
   }catch(e){
-    showMsg(msg, "تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
+    showMsg(msg, "تعذّر الاتصال، يُرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.", false);
   }finally{
     btn.disabled = false;
     if (!saved) btn.textContent = label;
@@ -415,13 +431,68 @@ async function removeReq(r, btn){
     if (!res.ok) alert(res.error || "تعذّر الحذف.");
     if (editing && editing.id === r.id) resetForm();
   }catch(e){
-    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+    alert("تعذّر الاتصال، يُرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.");
   }
   loadMine();
   loadList();
+  if (lastSearch) runSearch();
 }
 
 /* ---------- طلباتي ---------- */
+/* بطاقة طلب مع زري التعديل والإلغاء (تُستخدم في «طلباتي» وفي نتائج البحث) */
+function renderReqs(list, rows){
+  list.innerHTML = "";
+  rows.forEach(r => {
+    const box = document.createElement("div"); box.className = "req";
+    const info = document.createElement("div"); info.className = "info";
+    const when = document.createElement("div"); when.className = "when"; when.textContent = fmtDate(r.date);
+    const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = isSwapRow(r) ? "تبادل ⇄" : "تغطية";
+    when.append(tag);
+    const who = document.createElement("div"); who.className = "line";
+    who.textContent = r.teacher + " ← " + r.substitute;
+    const l1 = document.createElement("div"); l1.className = "line";
+    const withCls = (l, c) => fmtP(l) + (c ? " (" + c + ")" : "");
+    l1.textContent = r.substitute + " تأخذ: " + withCls(r.periods, r.cls) + (isSwapRow(r) ? " — " + r.teacher + " تأخذ: " + withCls(r.returnPeriods, r.retCls) : "");
+    info.append(when, who, l1);
+    if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
+    const btns = document.createElement("div"); btns.className = "btns";
+    const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
+    eb.addEventListener("click", () => startEdit(r));
+    const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "إلغاء الطلب";
+    db.addEventListener("click", () => removeReq(r, db));
+    btns.append(eb, db);
+    box.append(info, btns);
+    list.append(box);
+  });
+}
+
+/* ---------- البحث بالاسم ---------- */
+// توحيد الكتابة العربية حتى لا يفشل البحث بسبب أ/ا أو ة/ه أو ى/ي أو التشكيل
+const normName = t => String(t || "")
+  .replace(/[\u064B-\u065F\u0670\u0640]/g, "")
+  .replace(/[أإآٱ]/g, "ا").replace(/ة/g, "ه").replace(/ى/g, "ي").replace(/ؤ/g, "و").replace(/ئ/g, "ي")
+  .replace(/\s+/g, " ").trim().toLowerCase();
+let lastSearch = "";
+
+async function runSearch(){
+  const q = normName($("searchName").value);
+  const info = $("searchInfo"), list = $("searchList");
+  lastSearch = q;
+  if (!q){ info.hidden = true; list.innerHTML = ""; return; }
+  info.hidden = false; info.textContent = "جارٍ البحث…"; list.innerHTML = "";
+  try{
+    const res = await api({action:"list"});
+    if (!res.ok) throw new Error(res.error);
+    const rows = res.rows.filter(r => normName(r.teacher).includes(q) || normName(r.substitute).includes(q))
+      .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
+    info.textContent = rows.length ? "عدد الطلبات: " + AR_NUM(rows.length) : "لا توجد طلبات بهذا الاسم.";
+    renderReqs(list, rows);
+  }catch(e){
+    info.textContent = "تعذّر البحث، يُرجى المحاولة مرة أخرى." + (e && e.message ? " (" + e.message + ")" : "");
+  }
+}
+$("searchForm").addEventListener("submit", ev => { ev.preventDefault(); runSearch(); });
+
 async function loadMine(){
   const mine = store.get(MINE_KEY, []);
   if (!mine.length){ $("mineCard").hidden = true; return; }
@@ -435,26 +506,7 @@ async function loadMine(){
     const list = $("mineList");
     list.innerHTML = "";
     $("mineCard").hidden = !rows.length;
-    rows.forEach(r => {
-      const box = document.createElement("div"); box.className = "req";
-      const info = document.createElement("div"); info.className = "info";
-      const when = document.createElement("div"); when.className = "when"; when.textContent = fmtDate(r.date);
-      const tag = document.createElement("span"); tag.className = "tag"; tag.textContent = isSwapRow(r) ? "تبادل ⇄" : "تغطية";
-      when.append(tag);
-      const l1 = document.createElement("div"); l1.className = "line";
-      const withCls = (l, c) => fmtP(l) + (c ? " (" + c + ")" : "");
-      l1.textContent = r.substitute + " تأخذ: " + withCls(r.periods, r.cls) + (isSwapRow(r) ? " — " + r.teacher + " تأخذ: " + withCls(r.returnPeriods, r.retCls) : "");
-      info.append(when, l1);
-      if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
-      const btns = document.createElement("div"); btns.className = "btns";
-      const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
-      eb.addEventListener("click", () => startEdit(r));
-      const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "إلغاء الطلب";
-      db.addEventListener("click", () => removeReq(r, db));
-      btns.append(eb, db);
-      box.append(info, btns);
-      list.append(box);
-    });
+    renderReqs(list, rows);
   }catch(e){ /* بدون إنترنت: نترك القائمة كما هي */ }
 }
 
@@ -491,7 +543,7 @@ $("csvBtn").addEventListener("click", async () => {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }catch(e){
-    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+    alert("تعذّر الاتصال، يُرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.");
   }finally{ btn.disabled = false; }
 });
 
@@ -554,7 +606,7 @@ async function loadList(){
   }catch(e){
     const td = document.createElement("td");
     td.colSpan = 12; td.className = "empty";
-    td.textContent = "تعذّر تحميل البيانات، حاولي التحديث." + (e && e.message ? " (" + e.message + ")" : "");
+    td.textContent = "تعذّر تحميل البيانات، يُرجى التحديث." + (e && e.message ? " (" + e.message + ")" : "");
     tbody.innerHTML = ""; const tr = document.createElement("tr"); tr.append(td); tbody.append(tr);
   }
 }
