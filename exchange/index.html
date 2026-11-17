@@ -251,7 +251,6 @@ const store = {
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
 const MINE_KEY = "lesson-exchange-mine";       // [{id, token}]
-const NAME_KEY = "lesson-exchange-name";
 
 /* ---------- الاتصال بالخادم ---------- */
 /* الطلبات تُرسل واحدًا بعد الآخر (الخادم يقفل الجدول لكل طلب).
@@ -307,7 +306,6 @@ $("substitute").addEventListener("input", updateMode);
 $("teacher").addEventListener("input", updateMode);
 $("date").value = today();
 $("viewDate").value = today();
-$("teacher").value = store.get(NAME_KEY, "");
 updateMode();
 
 function showMsg(el, text, ok){ el.textContent = text; el.className = "msg " + (ok ? "ok" : "err"); }
@@ -317,7 +315,7 @@ let editing = null; // {id}
 
 function resetForm(){
   editing = null;
-  $("substitute").value = ""; $("notes").value = "";
+  $("teacher").value = ""; $("substitute").value = ""; $("notes").value = "";
   $("cls").value = ""; $("retCls").value = "";
   document.querySelectorAll(".periods input").forEach(i => i.checked = false);
   $("modeCover").checked = true;
@@ -393,7 +391,6 @@ $("form").addEventListener("submit", async ev => {
         mine.push({id: res.id, token: res.token});
         store.set(MINE_KEY, mine);
       }
-      store.set(NAME_KEY, entry.teacher);
       showMsg(msg, wasEditing ? "تم حفظ التعديل بنجاح ✓" : "تم الحفظ بنجاح ✓", true);
       resetForm();
       loadMine();
