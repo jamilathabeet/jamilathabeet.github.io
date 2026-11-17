@@ -174,7 +174,7 @@ function doPost(e) {
     if (teacher === substitute) return json_({ ok: false, error: 'لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.' });
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return json_({ ok: false, error: 'التاريخ غير صحيح.' });
     if (!periods.length) return json_({ ok: false, error: 'الرجاء اختيار حصة واحدة على الأقل.' });
-    if (body.swap && !returnPeriods.length) return json_({ ok: false, error: 'في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.' });
+    if (body.swap && !returnPeriods.length) return json_({ ok: false, error: 'في حالة التبادل، يُرجى اختيار حصص المعلمة البديلة التي ستأخذينها.' });
     if (!cls) return json_({ ok: false, error: 'الرجاء كتابة الصف.' });
     if (returnPeriods.length && !retCls) return json_({ ok: false, error: 'الرجاء كتابة صف المعلمة البديلة.' });
 

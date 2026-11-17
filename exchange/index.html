@@ -120,7 +120,7 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <section class="card no-print" id="formCard">
     <h2 id="formTitle">تسجيل تبادل جديد</h2>
     <form id="form" novalidate>
-      <div class="editing-note" id="editingNote" hidden>✏️ تعديل طلب محفوظ — غيّري ما تريدين ثم اضغطي «حفظ التعديل».</div>
+      <div class="editing-note" id="editingNote" hidden>✏️ تعديل طلب محفوظ: عدّلي البيانات المطلوبة، ثم اضغطي «حفظ التعديل».</div>
       <div class="grid">
         <div class="field">
           <label for="teacher">اسم المعلمة</label>
@@ -138,8 +138,8 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
       <div class="field">
         <label>نوع الطلب</label>
         <div class="mode">
-          <input type="radio" name="mode" id="modeCover" value="cover" checked><label for="modeCover">تغطية<small>البديلة تأخذ حصتي فقط</small></label>
-          <input type="radio" name="mode" id="modeSwap" value="swap"><label for="modeSwap">تبادل ⇄<small>كل وحدة تأخذ حصة الثانية</small></label>
+          <input type="radio" name="mode" id="modeCover" value="cover" checked><label for="modeCover">تغطية<small>تأخذ المعلمة البديلة حصتي فقط</small></label>
+          <input type="radio" name="mode" id="modeSwap" value="swap"><label for="modeSwap">تبادل ⇄<small>تأخذ كلٌّ منّا حصة الأخرى</small></label>
         </div>
       </div>
       <div class="field">
@@ -173,14 +173,14 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <!-- طلباتي -->
   <section class="card no-print" id="mineCard" hidden>
     <h2>طلباتي</h2>
-    <p class="hint">الطلبات التي سجّلتِها من هذا الجهاز. تقدرين تعدّلينها أو تلغينها.</p>
+    <p class="hint">الطلبات التي سجّلتِها من هذا الجهاز، ويمكنكِ تعديلها أو إلغاؤها.</p>
     <div class="mine" id="mineList"></div>
   </section>
 
   <!-- البحث بالاسم -->
   <section class="card no-print" id="searchCard">
-    <h2>ابحثي عن طلبك</h2>
-    <p class="hint">من أي جهاز أو متصفح: اكتبي اسمك، وتطلع طلباتك لتعدّليها أو تلغيها.</p>
+    <h2>البحث عن الطلبات</h2>
+    <p class="hint">للبحث عن طلباتكِ اكتبي الاسم، ويمكنكِ بعدها تعديلها أو إلغاؤها من أي جهاز أو متصفح.</p>
     <form class="login" id="searchForm">
       <div class="field">
         <label for="searchName">الاسم</label>
@@ -385,7 +385,7 @@ $("form").addEventListener("submit", async ev => {
   if (entry.teacher === entry.substitute) return showMsg(msg, "لا يمكن أن تكون المعلمة البديلة هي نفس المعلمة.", false);
   if (!entry.date) return showMsg(msg, "الرجاء اختيار التاريخ.", false);
   if (!entry.periods.length) return showMsg(msg, "الرجاء اختيار حصة واحدة على الأقل.", false);
-  if (entry.swap && !entry.returnPeriods.length) return showMsg(msg, "في التبادل اختاري حصص المعلمة البديلة التي ستأخذينها.", false);
+  if (entry.swap && !entry.returnPeriods.length) return showMsg(msg, "في حالة التبادل، يُرجى اختيار حصص المعلمة البديلة التي ستأخذينها.", false);
   if (!entry.cls) return showMsg(msg, "الرجاء كتابة صف حصص " + entry.teacher + ".", false);
   if (entry.swap && !entry.retCls) return showMsg(msg, "الرجاء كتابة صف حصص " + entry.substitute + ".", false);
 
@@ -416,7 +416,7 @@ $("form").addEventListener("submit", async ev => {
       showMsg(msg, res.error || "تعذّر الحفظ.", false);
     }
   }catch(e){
-    showMsg(msg, "تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.", false);
+    showMsg(msg, "تعذّر الاتصال، يُرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.", false);
   }finally{
     btn.disabled = false;
     if (!saved) btn.textContent = label;
@@ -431,7 +431,7 @@ async function removeReq(r, btn){
     if (!res.ok) alert(res.error || "تعذّر الحذف.");
     if (editing && editing.id === r.id) resetForm();
   }catch(e){
-    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+    alert("تعذّر الاتصال، يُرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.");
   }
   loadMine();
   loadList();
@@ -485,10 +485,10 @@ async function runSearch(){
     if (!res.ok) throw new Error(res.error);
     const rows = res.rows.filter(r => normName(r.teacher).includes(q) || normName(r.substitute).includes(q))
       .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
-    info.textContent = rows.length ? "عدد الطلبات: " + AR_NUM(rows.length) : "ما فيه طلبات بهذا الاسم.";
+    info.textContent = rows.length ? "عدد الطلبات: " + AR_NUM(rows.length) : "لا توجد طلبات بهذا الاسم.";
     renderReqs(list, rows);
   }catch(e){
-    info.textContent = "تعذّر البحث، حاولي مرة أخرى." + (e && e.message ? " (" + e.message + ")" : "");
+    info.textContent = "تعذّر البحث، يُرجى المحاولة مرة أخرى." + (e && e.message ? " (" + e.message + ")" : "");
   }
 }
 $("searchForm").addEventListener("submit", ev => { ev.preventDefault(); runSearch(); });
@@ -543,7 +543,7 @@ $("csvBtn").addEventListener("click", async () => {
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }catch(e){
-    alert("تعذّر الاتصال، تأكدي من الإنترنت وحاولي مرة أخرى.");
+    alert("تعذّر الاتصال، يُرجى التأكد من الاتصال بالإنترنت والمحاولة مرة أخرى.");
   }finally{ btn.disabled = false; }
 });
 
@@ -606,7 +606,7 @@ async function loadList(){
   }catch(e){
     const td = document.createElement("td");
     td.colSpan = 12; td.className = "empty";
-    td.textContent = "تعذّر تحميل البيانات، حاولي التحديث." + (e && e.message ? " (" + e.message + ")" : "");
+    td.textContent = "تعذّر تحميل البيانات، يُرجى التحديث." + (e && e.message ? " (" + e.message + ")" : "");
     tbody.innerHTML = ""; const tr = document.createElement("tr"); tr.append(td); tbody.append(tr);
   }
 }
