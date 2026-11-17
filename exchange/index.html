@@ -180,7 +180,7 @@ table.sheet{width:100%;min-width:760px;border-collapse:collapse}
   <!-- البحث بالاسم -->
   <section class="card no-print" id="searchCard">
     <h2>البحث عن الطلبات</h2>
-    <p class="hint">للبحث عن طلباتكِ اكتبي الاسم، ويمكنكِ بعدها تعديلها أو إلغاؤها من أي جهاز أو متصفح.</p>
+    <p class="hint">للبحث عن طلباتكِ اكتبي اسمكِ كاملًا كما سجّلتِه في خانة «اسم المعلمة»، ويمكنكِ بعدها تعديلها أو إلغاؤها من أي جهاز أو متصفح.</p>
     <form class="login" id="searchForm">
       <div class="field">
         <label for="searchName">الاسم</label>
@@ -330,6 +330,7 @@ let editing = null; // {id}
 
 function resetForm(){
   editing = null;
+  $("teacher").readOnly = false;
   $("teacher").value = ""; $("substitute").value = ""; $("notes").value = "";
   $("cls").value = ""; $("retCls").value = "";
   document.querySelectorAll(".periods input").forEach(i => i.checked = false);
@@ -340,9 +341,11 @@ function resetForm(){
   updateMode();
 }
 
-function startEdit(r){
-  editing = {id: r.id};
+/* ownerName: الاسم الذي بحثت به المعلمة (للتعديل من جهاز آخر)؛ يبقى اسم المعلمة ثابتًا عندها */
+function startEdit(r, ownerName){
+  editing = {id: r.id, ownerName: ownerName || ""};
   $("teacher").value = r.teacher;
+  $("teacher").readOnly = !!ownerName;
   $("substitute").value = r.substitute;
   $("date").value = r.date;
   $("notes").value = r.notes || "";
@@ -360,10 +363,11 @@ function startEdit(r){
 }
 $("cancelEdit").addEventListener("click", () => { resetForm(); clearMsg($("msg")); });
 
-/** يضيف رمز الطلب المحفوظ في جهاز المعلمة */
-function withToken(payload, id){
+/** يضيف ما يثبت أنها صاحبة الطلب: رمز الطلب المحفوظ في جهازها، أو اسمها كما كتبته في البحث */
+function withAuth(payload, id, ownerName){
   const it = store.get(MINE_KEY, []).find(x => x.id === id);
   if (it) payload.token = it.token;
+  if (ownerName) payload.ownerName = ownerName;
   return payload;
 }
 
@@ -391,7 +395,7 @@ $("form").addEventListener("submit", async ev => {
 
   const wasEditing = editing;
   const payload = wasEditing
-    ? withToken({...entry, action:"update", id: wasEditing.id}, wasEditing.id)
+    ? withAuth({...entry, action:"update", id: wasEditing.id}, wasEditing.id, wasEditing.ownerName)
     : {...entry, action:"add"};
 
   const btn = $("submitBtn"), label = btn.textContent;
@@ -423,11 +427,11 @@ $("form").addEventListener("submit", async ev => {
   }
 });
 
-async function removeReq(r, btn){
+async function removeReq(r, btn, ownerName){
   if (!confirm("إلغاء طلب «" + r.teacher + " ← " + r.substitute + "» يوم " + fmtDate(r.date) + "؟")) return;
   btn.disabled = true; btn.textContent = "جارٍ…";
   try{
-    const res = await api(withToken({action:"delete", id: r.id}, r.id));
+    const res = await api(withAuth({action:"delete", id: r.id}, r.id, ownerName));
     if (!res.ok) alert(res.error || "تعذّر الحذف.");
     if (editing && editing.id === r.id) resetForm();
   }catch(e){
@@ -440,7 +444,7 @@ async function removeReq(r, btn){
 
 /* ---------- طلباتي ---------- */
 /* بطاقة طلب مع زري التعديل والإلغاء (تُستخدم في «طلباتي» وفي نتائج البحث) */
-function renderReqs(list, rows){
+function renderReqs(list, rows, ownerName){
   list.innerHTML = "";
   rows.forEach(r => {
     const box = document.createElement("div"); box.className = "req";
@@ -457,9 +461,9 @@ function renderReqs(list, rows){
     if (r.notes){ const n = document.createElement("div"); n.className = "line"; n.textContent = r.notes; info.append(n); }
     const btns = document.createElement("div"); btns.className = "btns";
     const eb = document.createElement("button"); eb.type = "button"; eb.className = "ghost small"; eb.textContent = "تعديل";
-    eb.addEventListener("click", () => startEdit(r));
+    eb.addEventListener("click", () => startEdit(r, ownerName));
     const db = document.createElement("button"); db.type = "button"; db.className = "danger small"; db.textContent = "إلغاء الطلب";
-    db.addEventListener("click", () => removeReq(r, db));
+    db.addEventListener("click", () => removeReq(r, db, ownerName));
     btns.append(eb, db);
     box.append(info, btns);
     list.append(box);
@@ -475,7 +479,8 @@ const normName = t => String(t || "")
 let lastSearch = "";
 
 async function runSearch(){
-  const q = normName($("searchName").value);
+  const raw = $("searchName").value.trim();
+  const q = normName(raw);
   const info = $("searchInfo"), list = $("searchList");
   lastSearch = q;
   if (!q){ info.hidden = true; list.innerHTML = ""; return; }
@@ -483,10 +488,12 @@ async function runSearch(){
   try{
     const res = await api({action:"list"});
     if (!res.ok) throw new Error(res.error);
-    const rows = res.rows.filter(r => normName(r.teacher).includes(q) || normName(r.substitute).includes(q))
+    // طلبات صاحبة الاسم فقط (الاسم كاملًا كما سُجّل في خانة «اسم المعلمة»)
+    const rows = res.rows.filter(r => normName(r.teacher) === q)
       .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt));
-    info.textContent = rows.length ? "عدد الطلبات: " + AR_NUM(rows.length) : "لا توجد طلبات بهذا الاسم.";
-    renderReqs(list, rows);
+    info.textContent = rows.length ? "عدد الطلبات: " + AR_NUM(rows.length)
+      : "لا توجد طلبات مسجّلة بهذا الاسم. يُرجى كتابة الاسم كاملًا كما سُجّل في الطلب.";
+    renderReqs(list, rows, raw);
   }catch(e){
     info.textContent = "تعذّر البحث، يُرجى المحاولة مرة أخرى." + (e && e.message ? " (" + e.message + ")" : "");
   }
