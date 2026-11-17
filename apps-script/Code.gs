@@ -7,7 +7,7 @@
  *  - «رمز الطلب»: يُحفظ في جهاز المعلمة عند الحفظ، لتظهر طلباتها في «طلباتي» تلقائيًا.
  *  - «صف المعلمة»: صف حصص المعلمة التي تأخذها البديلة. «صف البديلة»: صف حصص البديلة التي تأخذها المعلمة (في التبادل).
  *
- * التعديل والإلغاء متاحان من الصفحة: من «طلباتي» على نفس الجهاز، أو بالبحث عن الاسم من أي جهاز.
+ * التعديل والإلغاء لصاحبة الطلب فقط: من «طلباتي» على نفس الجهاز (برمز الطلب)، أو من أي جهاز بكتابة اسمها كما سُجّل في الطلب.
  */
 const SHEET_NAME = 'التبادل';
 const HEADERS = ['الطابع الزمني', 'التاريخ', 'المعلمة', 'المعلمة البديلة', 'الحصص', 'ملاحظات', 'المعرف', 'حصص البديلة (للتبادل)', 'رمز الطلب', 'صف المعلمة', 'صف البديلة'];
@@ -106,6 +106,14 @@ function assignments_(r) {
     .concat(r.returnPeriods.map(p => ({ p: p, coverer: r.teacher, owner: r.substitute })));
 }
 
+/** توحيد الكتابة العربية للمقارنة: أ/إ/آ→ا، ة→ه، ى→ي، وحذف التشكيل والمسافات الزائدة */
+function normName_(t) {
+  return String(t || '')
+    .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
+    .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
 function clean_(s, max) {
   return String(s || '').replace(/\s+/g, ' ').trim().slice(0, max);
 }
@@ -119,8 +127,8 @@ function doGet() {
  * POST (نص JSON) — الحقل action:
  *  add     {teacher, substitute, date, periods, cls, returnPeriods, retCls, swap, notes}  → {ok, id, token}
  *  mine    {items:[{id, token}]}                                            → {ok, rows}
- *  update  نفس حقول add + {id}
- *  delete  {id}
+ *  update  نفس حقول add + {id, token | ownerName}
+ *  delete  {id, token | ownerName}
  *  list    {date}  (بدون تاريخ = كل الأيام)                                   → {ok, rows}
  */
 function doPost(e) {
@@ -148,11 +156,14 @@ function doPost(e) {
       return json_({ ok: true, rows: rows });
     }
 
-    // التعديل والحذف بمعرّف الطلب (من «طلباتي» أو من البحث بالاسم)
-    let target = null;
+    // التعديل والحذف لصاحبة الطلب فقط: برمز الجهاز، أو باسمها كما سُجّل في الطلب
+    let target = null, byToken = false;
     if (action === 'update' || action === 'delete') {
       target = readAll_(sh).find(r => r.id === String(body.id || ''));
       if (!target) return json_({ ok: false, error: 'لم يُعثر على هذا الطلب، ربما حُذف مسبقًا.' });
+      byToken = !!(target.token && body.token && String(body.token) === target.token);
+      const byName = !!body.ownerName && normName_(body.ownerName) === normName_(target.teacher);
+      if (!byToken && !byName) return json_({ ok: false, error: 'لا يمكن تعديل هذا الطلب أو إلغاؤه إلا باسم المعلمة المسجّل فيه.' });
       if (action === 'delete') {
         sh.deleteRow(target.row);
         return json_({ ok: true });
@@ -177,6 +188,9 @@ function doPost(e) {
     if (body.swap && !returnPeriods.length) return json_({ ok: false, error: 'في حالة التبادل، يُرجى اختيار حصص المعلمة البديلة التي ستأخذينها.' });
     if (!cls) return json_({ ok: false, error: 'الرجاء كتابة الصف.' });
     if (returnPeriods.length && !retCls) return json_({ ok: false, error: 'الرجاء كتابة صف المعلمة البديلة.' });
+    if (target && !byToken && normName_(teacher) !== normName_(target.teacher)) {
+      return json_({ ok: false, error: 'لا يمكن تغيير اسم المعلمة عند التعديل.' });
+    }
 
     // منع التعارض في نفس اليوم (مع تجاهل الطلب نفسه عند التعديل)
     const existing = [];
