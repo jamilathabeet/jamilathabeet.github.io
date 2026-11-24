@@ -2,13 +2,54 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>بوابة التقويم الذاتي</title>
-<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec">
-<script>location.replace("https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec");</script>
-<style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f2f6f3;color:#12302b;font-family:system-ui,"Segoe UI",Tahoma,sans-serif;text-align:center}a{color:#2a8a3f}</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>تآزر · المنصة الرقمية للإدارة المدرسية</title>
+<meta name="description" content="تآزر: المنصة الرقمية للإدارة المدرسية في مدرسة جميلة بنت ثابت للتعليم الأساسي (١–٨). معًا نصنع الأثر.">
+<meta name="theme-color" content="#6B0F1A">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta property="og:title" content="تآزر · المنصة الرقمية للإدارة المدرسية">
+<meta property="og:description" content="مدرسة جميلة بنت ثابت للتعليم الأساسي (١–٨) · معًا نصنع الأثر">
+<meta property="og:image" content="https://tazur.com/og.png">
+<meta property="og:url" content="https://tazur.com/">
+<meta name="twitter:card" content="summary_large_image">
+<style>
+  html,body{margin:0;height:100%;background:#FBF7EF;overflow:hidden}
+  #app{position:fixed;inset:0;width:100%;height:100%;border:0;display:block;background:#FBF7EF}
+  #ld{position:fixed;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+      background:#FBF7EF;font-family:"Segoe UI",Tahoma,system-ui,sans-serif;color:#6B0F1A;text-align:center;padding:24px;
+      transition:opacity .25s ease,visibility .25s}
+  #ld.off{opacity:0;visibility:hidden}
+  #ld img{width:min(220px,52vw);height:auto;animation:pl 1.8s ease-in-out infinite}
+  #ld p{margin:0;font-size:17px;font-weight:600}
+  #ld .bar{width:160px;height:5px;border-radius:5px;background:#EADFCB;overflow:hidden}
+  #ld .bar i{display:block;width:40%;height:100%;border-radius:5px;background:linear-gradient(90deg,#8A0C1E,#C2943E);animation:mv 1.2s ease-in-out infinite}
+  #ld a{font-size:14px;color:#8A0C1E;opacity:0;transition:opacity .4s}
+  #ld a.show{opacity:1}
+  @keyframes pl{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+  @keyframes mv{0%{transform:translateX(150%)}100%{transform:translateX(-250%)}}
+  @media (prefers-reduced-motion:reduce){#ld img,#ld .bar i{animation:none}}
+</style>
 </head>
 <body>
-<p>جارٍ فتح بوابة التقويم الذاتي…<br><a href="https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec">اضغط هنا إن لم تُفتح تلقائيًا</a></p>
+<div id="ld" role="status" aria-live="polite">
+  <img src="logo.png" alt="تآزر: المنصة الرقمية للإدارة المدرسية">
+  <p>جارٍ فتح منصة تآزر…</p>
+  <div class="bar"><i></i></div>
+  <a id="alt" href="https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec">إن تأخر الفتح، اضغط هنا</a>
+</div>
+<!-- المنصة تُعرض داخل الصفحة، فيبقى رابط tazur.com ظاهرًا في المتصفح -->
+<iframe id="app" title="منصة تآزر"
+  src="https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec"
+  allow="clipboard-write; fullscreen; camera; microphone"
+  allowfullscreen></iframe>
+<script>
+  var ld=document.getElementById('ld'),done=false;
+  function hide(){if(done)return;done=true;ld.className='off';}
+  document.getElementById('app').addEventListener('load',hide);
+  // رابط احتياطي يظهر إن تأخر الفتح (شبكة بطيئة أو متصفح يمنع عرض المنصة داخل الصفحة)
+  setTimeout(function(){document.getElementById('alt').className='show';},9000);
+  setTimeout(hide,20000);
+</script>
 </body>
 </html>
