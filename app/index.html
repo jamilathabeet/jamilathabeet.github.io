@@ -3379,8 +3379,7 @@ function edpOpen(list,title,pre){
   ov.innerHTML='<div class="edp-bar"><b>'+esc(title)+'</b><span class="edp-n">'+arCount(list.length,'بطاقة واحدة','بطاقتان','بطاقات','بطاقة')+'</span><button class="btn" type="button" data-edp-go>'+ico('print')+' طباعة</button><button class="btn ghost" type="button" data-edp-x>إغلاق</button></div><iframe title="'+esc(title)+'"></iframe>';
   document.body.appendChild(ov);document.body.style.overflow='hidden';
   var fr=ov.querySelector('iframe');
-  fr.srcdoc='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>'+esc(title)+'</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Noto+Kufi+Arabic:wght@700&display=swap"><style>'+EDP_CSS+'</style></head><body>'+(pre||'')+list.map(edpSheet).join('')+'<!-- tazurom-remote-ui -->
-</body></html>';
+  fr.srcdoc='<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>'+esc(title)+'</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Noto+Kufi+Arabic:wght@700&display=swap"><style>'+EDP_CSS+'</style></head><body>'+(pre||'')+list.map(edpSheet).join('')+'</body></html>';
   function close(){ov.remove();document.body.style.overflow='';document.removeEventListener('keydown',key);if(back&&back.isConnected&&back.focus)back.focus();}
   function key(ev){if(ev.key==='Escape')close();}
   document.addEventListener('keydown',key);
