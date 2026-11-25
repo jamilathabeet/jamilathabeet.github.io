@@ -33,8 +33,10 @@
   #ld p{margin:0;font-size:17px;font-weight:600}
   #ld .bar{width:160px;height:5px;border-radius:5px;background:#EADFCB;overflow:hidden}
   #ld .bar i{display:block;width:40%;height:100%;border-radius:5px;background:linear-gradient(90deg,#8A0C1E,#C2943E);animation:mv 1.2s ease-in-out infinite}
-  #ld a{font-size:14px;color:#8A0C1E;opacity:0;transition:opacity .4s}
-  #ld a.show{opacity:1}
+  #ld a{font-size:16px;font-weight:700;color:#fff;background:#8A0C1E;padding:12px 22px;border-radius:12px;text-decoration:none;opacity:0;pointer-events:none;transition:opacity .4s;margin-top:8px}
+  #ld small{font-size:13px;color:#6E5F55;opacity:0;transition:opacity .4s}
+  #ld small.show{opacity:1}
+  #ld a.show{opacity:1;pointer-events:auto}
   @keyframes pl{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
   @keyframes mv{0%{transform:translateX(150%)}100%{transform:translateX(-250%)}}
   @media (prefers-reduced-motion:reduce){#ld img,#ld .bar i{animation:none}}
@@ -45,7 +47,8 @@
   <img src="logo.png" alt="تآزر: المنصة الرقمية للإدارة المدرسية">
   <p>جارٍ فتح منصة تآزر…</p>
   <div class="bar"><i></i></div>
-  <a id="alt" href="https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec">إن تأخر الفتح، اضغط هنا</a>
+  <a id="alt" href="https://script.google.com/macros/s/AKfycbwKGjyIl0gsy3HGfDtrFB_9os7vr9GARstDHLlHw6hdGoCgfZatlDGjjmAAARJfZxILHg/exec">فتح المنصة مباشرة</a>
+  <small id="alt2">إن تأخر ظهور المنصة، اضغط الزر أعلاه</small>
 </div>
 <!-- المنصة تُعرض داخل الصفحة، فيبقى رابط tazur.com ظاهرًا في المتصفح -->
 <iframe id="app" title="منصة تآزر" referrerpolicy="strict-origin-when-cross-origin"
@@ -57,7 +60,7 @@
   function hide(){if(done)return;done=true;ld.className='off';}
   document.getElementById('app').addEventListener('load',hide);
   // رابط احتياطي يظهر إن تأخر الفتح (شبكة بطيئة أو متصفح يمنع عرض المنصة داخل الصفحة)
-  setTimeout(function(){document.getElementById('alt').className='show';},9000);
+  setTimeout(function(){document.getElementById('alt').className='show';document.getElementById('alt2').className='show';},6000);
   setTimeout(hide,20000);
 </script>
 </body>
