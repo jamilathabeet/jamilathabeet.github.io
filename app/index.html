@@ -1036,7 +1036,7 @@ function subjCov(d){
 function enter(res){token=res.token;session=res.session;tkSet(token);saveName(session.name);applyRole();render(false);refresh().then(function(){changed();}).catch(function(){});}
 // يتغير مع كل تحديث للكود، ليظهر أسفل الصفحة أن النشر الجديد وصل.
 /* النسخة ٣٥: اسم الفريق «فريق التقويم والتحسين» */
-var VERSION='٢٤ نوفمبر ٢٠٢٦ (١٣٩)';
+var VERSION='٢٥ نوفمبر ٢٠٢٦ (١٤٠)';
 var CREDIT='<p class="credit">تصميم وإعداد: مساعدة المديرة <b>عايدة الوهيبي</b></p><p class="ver">نسخة المنصة: '+VERSION+'</p>';
 function gateHtml(){
   var nm=esc(lastName());
@@ -6249,11 +6249,11 @@ async function imgShrink(f){
     if(!f||String(f.type).indexOf('image/')!==0||/gif|svg/.test(f.type))return f;
     var url=URL.createObjectURL(f);
     var im=await new Promise(function(ok,no){var i=new Image();i.onload=function(){ok(i);};i.onerror=no;i.src=url;});
-    var W=im.naturalWidth,H=im.naturalHeight,M=1600;
-    if(f.size<1200000&&W<=M&&H<=M){URL.revokeObjectURL(url);return f;}
+    var W=im.naturalWidth,H=im.naturalHeight,M=1400;
+    if(f.size<450000&&W<=M&&H<=M){URL.revokeObjectURL(url);return f;}
     var k=Math.min(1,M/Math.max(W,H)),c=document.createElement('canvas');c.width=Math.round(W*k);c.height=Math.round(H*k);
     var x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);
-    var b=await new Promise(function(ok){c.toBlob(ok,'image/jpeg',.86);});
+    var b=await new Promise(function(ok){c.toBlob(ok,'image/jpeg',.8);});
     if(!b||b.size>=f.size)return f;
     return new File([b],String(f.name||'image').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg'});
   }catch(e){return f;}
@@ -9879,7 +9879,7 @@ document.addEventListener('keydown',function(ev){
 });
 
 /* ---------- uploads to Google Drive (in parts) ---------- */
-var MAX_MB=300,MAX_FILES=20,CHUNK=4*1024*1024,COVER_MB=20;
+var MAX_MB=50,MAX_FILES=20,CHUNK=4*1024*1024,COVER_MB=20;
 function blobToB64(b){return new Promise(function(ok,no){var r=new FileReader();r.onload=function(){var x=String(r.result);ok(x.slice(x.indexOf(',')+1));};r.onerror=function(){no({message:'تعذر قراءة الملف.'});};r.readAsDataURL(b);});}
 async function uploadFile(file,ind,onp){
   var ext=((/\.([a-z0-9]+)$/i.exec(file.name||'')||[])[1]||'').toLowerCase();
